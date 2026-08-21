@@ -109,13 +109,7 @@ def ask(request: AskRequest):
         log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
         raise HTTPException(status_code=500, detail=detail)
 
-    add_turn(
-        conversation_id,
-        question=request.question,
-        sql=result["generated_sql"],
-        row_count=result["row_count"],
-        columns=result["columns"],
-    )
+    add_turn(conversation_id, question=request.question, result=result)
     log_ask(request.question, (time.perf_counter() - start) * 1000, success=True, result=result)
     return AskResponse(**result, conversation_id=conversation_id)
 

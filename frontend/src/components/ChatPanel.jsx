@@ -38,18 +38,30 @@ function Exchange({ entry }) {
           <div className="chat-answer-body">
             <ReasoningTrace trace={data.trace} />
 
-            <div className="chat-sql">
-              <div className="chat-sql-label">
-                Generated SQL{data.attempts > 1 ? ` (took ${data.attempts} attempts)` : ""}
+            {data.response_type === "chat" ? (
+              <div className="chat-reply">
+                <p>{data.message}</p>
                 <span className="chat-cost">
                   {data.prompt_tokens + data.completion_tokens} tokens · $
                   {data.estimated_cost_usd.toFixed(5)}
                 </span>
               </div>
-              <pre>{data.generated_sql}</pre>
-            </div>
+            ) : (
+              <>
+                <div className="chat-sql">
+                  <div className="chat-sql-label">
+                    Generated SQL{data.attempts > 1 ? ` (took ${data.attempts} attempts)` : ""}
+                    <span className="chat-cost">
+                      {data.prompt_tokens + data.completion_tokens} tokens · $
+                      {data.estimated_cost_usd.toFixed(5)}
+                    </span>
+                  </div>
+                  <pre>{data.generated_sql}</pre>
+                </div>
 
-            <ResultsTable result={data} loading={false} />
+                <ResultsTable result={data} loading={false} />
+              </>
+            )}
           </div>
         </div>
       )}

@@ -795,6 +795,16 @@ tbody tr:hover {
   color: var(--red);
 }
 
+.chat-reply {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.chat-reply p {
+  margin: 0 0 6px;
+}
+
 .chat-sql-label {
   font-size: 11px;
   text-transform: uppercase;

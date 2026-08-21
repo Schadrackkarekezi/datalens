@@ -1,7 +1,7 @@
 const STEP_META = {
   retrieve: { icon: "📚", label: "Retrieved business context" },
   graph_lookup: { icon: "🕸️", label: "Graph lookup" },
-  generate_and_execute: { icon: "⚙️", label: "Generate & execute SQL" },
+  respond: { icon: "⚙️", label: "Generate response" },
 };
 
 function describeStep(step) {
@@ -23,8 +23,8 @@ function describeStep(step) {
     return `entities: ${entities.join(", ")} · ${paths.length} join path${paths.length > 1 ? "s" : ""} found`;
   }
 
-  if (step.step === "generate_and_execute") {
-    if (step.status === "declined") return `declined: ${step.reason}`;
+  if (step.step === "respond") {
+    if (step.status === "chat") return "replied conversationally, no query needed";
     if (step.status === "error") return `attempt ${step.attempt} failed: ${step.error} — retrying`;
     return `attempt ${step.attempt} · ${step.row_count} row${step.row_count === 1 ? "" : "s"} returned`;
   }
@@ -33,10 +33,7 @@ function describeStep(step) {
 }
 
 function stepStatus(step) {
-  if (step.step === "generate_and_execute") {
-    if (step.status === "error") return "warn";
-    if (step.status === "declined") return "fail";
-  }
+  if (step.step === "respond" && step.status === "error") return "warn";
   return "ok";
 }
 

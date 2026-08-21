@@ -1,10 +1,27 @@
 """
-The text-to-SQL agent behind POST /ask.
+The agent behind POST /ask.
 
 This is a multi-step pipeline, not a single LLM call:
 
-  retrieve (RAG) -> generate SQL -> execute -> [on failure: retry with the
-  error fed back to the model, up to MAX_ATTEMPTS] -> return
+  retrieve (RAG) -> graph lookup -> respond, where "respond" is one of two
+  modes the model itself chooses per turn:
+
+    - "sql":  the question asks for data. Generate a query, execute it,
+              and on failure retry with the error fed back to the model
+              (up to MAX_ATTEMPTS).
+    - "chat": anything else — a greeting, a meta-question about a previous
+              answer ("are you sure?", "why did you write it that way?"),
+              a clarifying question the model needs to ask back, or an
+              honest explanation of why this schema can't answer something.
+              No SQL, no execution — just a reply.
+
+Mixing these into one Pydantic response type (rather than always forcing
+SQL) is what makes "can't answer this" a normal conversational turn
+instead of an error: previously every non-SQL response was an exception
+that surfaced in the UI as a red failure banner, which was wrong — the
+agent hadn't failed, it had correctly declined to invent a query.
+AgentError is now reserved for genuine failures: SQL that keeps erroring
+out after every retry.
 
 Each step is timed and recorded in `trace`, so the same data that answers
 the question also documents exactly what the agent did to get there —
@@ -13,7 +30,7 @@ this trace is what Week 4's observability layer logs and displays.
 
 import os
 import time
-from typing import Optional
+from typing import Literal, Optional
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -40,10 +57,10 @@ def _get_client():
     return _client
 
 
-class SQLGeneration(BaseModel):
-    can_answer: bool
-    reason: Optional[str] = None  # why not, when can_answer is False
-    sql: Optional[str] = None
+class AgentResponse(BaseModel):
+    response_type: Literal["sql", "chat"]
+    message: Optional[str] = None  # chat mode: the reply text
+    sql: Optional[str] = None  # sql mode: the query
 
 
 class AgentError(Exception):
@@ -72,22 +89,26 @@ def _format_history(history) -> str:
         return ""
     turns = []
     for turn in history:
-        turns.append(
-            f"Q: {turn['question']}\nSQL: {turn['sql']}\n"
-            f"(returned {turn['row_count']} row(s); columns: {', '.join(turn['columns'])})"
-        )
+        if turn["type"] == "sql":
+            turns.append(
+                f"Q: {turn['question']}\nSQL: {turn['sql']}\n"
+                f"(returned {turn['row_count']} row(s); columns: {', '.join(turn['columns'])})"
+            )
+        else:
+            turns.append(f"Q: {turn['question']}\nA: {turn['message']}")
     return (
         "\n\nPrevious turns in this conversation — use these to resolve follow-ups "
-        "like \"that\", \"those\", \"now filter by...\", \"break that down by...\":\n\n"
+        "(\"that\", \"those\", \"now filter by...\") and to answer meta-questions about "
+        "what you just said (\"are you sure?\", \"why?\", \"what does that mean?\"):\n\n"
         + "\n\n".join(turns)
     )
 
 
-def _generate_sql(system_prompt: str, messages: list):
+def _generate(system_prompt: str, messages: list):
     response = _get_client().chat.completions.parse(
         model=MODEL,
         messages=[{"role": "system", "content": system_prompt}] + messages,
-        response_format=SQLGeneration,
+        response_format=AgentResponse,
     )
     parsed = response.choices[0].message.parsed
     usage = {
@@ -130,7 +151,25 @@ def run_ask(question: str, history: list = None):
             f"- {p}" for p in join_paths
         )
 
-    system_prompt = f"""You are a SQLite expert helping analyze a business database.
+    system_prompt = f"""You are a friendly, sharp data analyst assistant for a business database.
+You have two response modes, chosen per turn:
+
+- "sql": the question genuinely asks for data or analysis this schema can
+  answer. Set response_type to "sql" and write a single SQLite SELECT query
+  in sql — no markdown fences, no explanation, leave message empty.
+- "chat": everything else — greetings, small talk, meta-questions about a
+  previous answer ("are you sure?", "why did you write it that way?",
+  "what does that mean?"), a clarifying question you need to ask back
+  because the request is ambiguous, or an honest explanation when this
+  schema genuinely has no data for what's being asked (forecasts,
+  satisfaction scores, churn, external data, etc). Set response_type to
+  "chat" and write a natural, concise, warm reply in message — leave sql
+  empty. When explaining a previous SQL query or declining a question, be
+  specific about why, using the schema and conversation history below.
+
+Never guess or approximate a data answer with unrelated columns just to
+have something in sql — an honest chat reply is correct; a plausible-
+looking wrong query is not.
 
 Schema:
 {_format_schema(tables)}
@@ -138,42 +177,43 @@ Schema:
 Relevant business term definitions:
 {_format_glossary(context)}
 {join_hint}
-{_format_history(history)}
-
-If the question can be answered using only the tables, columns, and business
-terms above, set can_answer to true and write a single SQLite SELECT query
-in sql — no markdown fences, no explanation. If the question asks for
-something this schema has no data for (forecasts, predictions, satisfaction
-or sentiment scores, churn, external/competitor data, anything not
-represented by a table or column above), set can_answer to false, leave sql
-empty, and briefly explain why in reason. Do not guess or approximate an
-answer with unrelated columns — an honest "can't answer" is correct; a
-plausible-looking wrong query is not."""
+{_format_history(history)}"""
 
     messages = [{"role": "user", "content": question}]
     last_error = None
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         t1 = time.perf_counter()
-        parsed, usage = _generate_sql(system_prompt, messages)
+        parsed, usage = _generate(system_prompt, messages)
         gen_latency = round((time.perf_counter() - t1) * 1000, 2)
         total_prompt_tokens += usage["prompt_tokens"]
         total_completion_tokens += usage["completion_tokens"]
 
-        if not parsed.can_answer:
+        if parsed.response_type == "chat":
             trace.append({
-                "step": "generate_and_execute",
+                "step": "respond",
                 "attempt": attempt,
                 "generate_latency_ms": gen_latency,
                 "tokens": usage,
-                "status": "declined",
-                "reason": parsed.reason,
+                "status": "chat",
             })
-            raise AgentError(
-                f"This can't be answered from the current schema: {parsed.reason}",
-                prompt_tokens=total_prompt_tokens,
-                completion_tokens=total_completion_tokens,
-            )
+            estimated_cost = estimate_cost_usd(MODEL, total_prompt_tokens, total_completion_tokens)
+            return {
+                "response_type": "chat",
+                "question": question,
+                "message": parsed.message,
+                "generated_sql": None,
+                "columns": [],
+                "rows": [],
+                "row_count": 0,
+                "truncated": False,
+                "attempts": attempt,
+                "retrieved_context": context,
+                "trace": trace,
+                "prompt_tokens": total_prompt_tokens,
+                "completion_tokens": total_completion_tokens,
+                "estimated_cost_usd": estimated_cost,
+            }
 
         sql = parsed.sql.strip()
         messages.append({"role": "assistant", "content": sql})
@@ -183,7 +223,7 @@ plausible-looking wrong query is not."""
         except QueryError as e:
             last_error = str(e)
             trace.append({
-                "step": "generate_and_execute",
+                "step": "respond",
                 "attempt": attempt,
                 "sql": sql,
                 "generate_latency_ms": gen_latency,
@@ -198,7 +238,7 @@ plausible-looking wrong query is not."""
             continue
 
         trace.append({
-            "step": "generate_and_execute",
+            "step": "respond",
             "attempt": attempt,
             "sql": sql,
             "generate_latency_ms": gen_latency,
@@ -212,7 +252,9 @@ plausible-looking wrong query is not."""
         estimated_cost = estimate_cost_usd(MODEL, total_prompt_tokens, total_completion_tokens)
 
         return {
+            "response_type": "sql",
             "question": question,
+            "message": None,
             "generated_sql": sql,
             "columns": columns,
             "rows": rows,

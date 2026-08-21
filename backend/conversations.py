@@ -27,13 +27,22 @@ def get_history(conversation_id: str) -> list:
     return _sessions[conversation_id][-MAX_TURNS:]
 
 
-def add_turn(conversation_id: str, question: str, sql: str, row_count: int, columns: list):
-    _sessions[conversation_id].append({
-        "question": question,
-        "sql": sql,
-        "row_count": row_count,
-        "columns": columns,
-    })
+def add_turn(conversation_id: str, question: str, result: dict):
+    if result["response_type"] == "sql":
+        turn = {
+            "type": "sql",
+            "question": question,
+            "sql": result["generated_sql"],
+            "row_count": result["row_count"],
+            "columns": result["columns"],
+        }
+    else:
+        turn = {
+            "type": "chat",
+            "question": question,
+            "message": result["message"],
+        }
+    _sessions[conversation_id].append(turn)
     _last_active[conversation_id] = time.time()
 
 

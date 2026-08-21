@@ -48,8 +48,10 @@ class AskRequest(BaseModel):
 
 
 class AskResponse(BaseModel):
+    response_type: str  # "sql" | "chat"
     question: str
-    generated_sql: str
+    message: Optional[str] = None
+    generated_sql: Optional[str] = None
     columns: list[str]
     rows: list[list[Any]]
     row_count: int
@@ -68,6 +70,7 @@ class LogEntry(BaseModel):
     question: str
     success: bool
     total_latency_ms: float
+    response_type: Optional[str] = None
     generated_sql: Optional[str] = None
     attempts: Optional[int] = None
     row_count: Optional[int] = None

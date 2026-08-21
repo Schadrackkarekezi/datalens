@@ -4,8 +4,10 @@ Evaluation harness for the /ask agent.
 Calls agent.run_ask() directly (no HTTP hop) for every question in
 eval_set.json, checks the result against expectations, and prints an
 accuracy report. For "ambiguous" questions (no matching data in the
-schema), a *pass* means the agent failed gracefully — raised AgentError —
-rather than hallucinating an answer to a question the data can't support.
+schema), a *pass* means the agent correctly replied in chat mode instead
+of hallucinating a SQL query to answer something the data can't support.
+AgentError (retries exhausted on genuinely broken SQL) always counts as a
+failure — that's a real bug, not a valid outcome for any eval case.
 
 Usage: python run_eval.py
 """
@@ -19,7 +21,10 @@ EVAL_SET_PATH = "eval_set.json"
 RESULTS_PATH = "eval_results.json"
 
 
-def check_normal(case: dict, result: dict) -> tuple[bool, str]:
+def check_sql_case(case: dict, result: dict) -> tuple[bool, str]:
+    if result["response_type"] != "sql":
+        return False, f"expected a SQL answer, agent replied in chat mode: {result['message']}"
+
     sql_lower = result["generated_sql"].lower()
 
     pattern = case.get("expected_sql_pattern")
@@ -40,22 +45,24 @@ def run_case(case: dict) -> dict:
         latency_ms = round((time.perf_counter() - start) * 1000, 2)
 
         if case.get("expect_failure"):
+            passed = result["response_type"] == "chat"
             return {
                 "question": case["question"],
                 "category": case["category"],
-                "passed": False,
-                "reason": f"expected graceful failure, agent answered with: {result['generated_sql']}",
+                "passed": passed,
+                "reason": "declined gracefully as expected" if passed
+                else f"expected a chat decline, agent answered with: {result['generated_sql']}",
                 "latency_ms": latency_ms,
                 "attempts": result["attempts"],
             }
 
-        passed, reason = check_normal(case, result)
+        passed, reason = check_sql_case(case, result)
         return {
             "question": case["question"],
             "category": case["category"],
             "passed": passed,
             "reason": reason,
-            "generated_sql": result["generated_sql"],
+            "generated_sql": result.get("generated_sql"),
             "row_count": result["row_count"],
             "attempts": result["attempts"],
             "latency_ms": latency_ms,
@@ -63,12 +70,11 @@ def run_case(case: dict) -> dict:
 
     except AgentError as e:
         latency_ms = round((time.perf_counter() - start) * 1000, 2)
-        passed = bool(case.get("expect_failure"))
         return {
             "question": case["question"],
             "category": case["category"],
-            "passed": passed,
-            "reason": "failed gracefully as expected" if passed else f"agent error: {e}",
+            "passed": False,
+            "reason": f"agent error: {e}",
             "latency_ms": latency_ms,
         }
 
