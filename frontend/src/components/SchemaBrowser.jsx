@@ -1,27 +1,44 @@
 import { useEffect, useState } from "react";
 import { getSchema } from "../api";
 
-export default function SchemaBrowser({ onPickTable }) {
+export default function SchemaBrowser({ onPickTable, activeTable, onSchemaLoaded }) {
   const [tables, setTables] = useState([]);
   const [error, setError] = useState(null);
+  const [filter, setFilter] = useState("");
 
   useEffect(() => {
     getSchema()
-      .then((data) => setTables(data.tables))
-      .catch((err) => setError(err.message));
+      .then((data) => {
+        setTables(data.tables);
+        onSchemaLoaded?.(true);
+      })
+      .catch((err) => {
+        setError(err.message);
+        onSchemaLoaded?.(false);
+      });
   }, []);
 
   if (error) return <div className="schema-browser error">{error}</div>;
 
+  const filtered = tables.filter((t) =>
+    t.name.toLowerCase().includes(filter.toLowerCase())
+  );
+
   return (
     <div className="schema-browser">
       <h2>Schema</h2>
-      {tables.map((table) => (
-        <div key={table.name} className="schema-table">
-          <button
-            className="schema-table-name"
-            onClick={() => onPickTable(table.name)}
-          >
+      <input
+        className="schema-search"
+        placeholder="Filter tables…"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      {filtered.map((table) => (
+        <div
+          key={table.name}
+          className={`schema-table${activeTable === table.name ? " active" : ""}`}
+        >
+          <button className="schema-table-name" onClick={() => onPickTable(table.name)}>
             {table.name}
           </button>
           <ul>
@@ -34,6 +51,9 @@ export default function SchemaBrowser({ onPickTable }) {
           </ul>
         </div>
       ))}
+      {tables.length > 0 && filtered.length === 0 && (
+        <div className="schema-empty">No matching tables</div>
+      )}
     </div>
   );
 }

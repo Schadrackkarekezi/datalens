@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { sql as sqlLang } from "@codemirror/lang-sql";
 
 export default function QueryEditor({ sql, setSql, onRun, loading }) {
   useEffect(() => {
@@ -11,14 +13,19 @@ export default function QueryEditor({ sql, setSql, onRun, loading }) {
 
   return (
     <div className="query-editor">
-      <textarea
-        value={sql}
-        onChange={(e) => setSql(e.target.value)}
-        placeholder="SELECT * FROM deals LIMIT 10"
-        rows={6}
-      />
-      <button onClick={onRun} disabled={loading}>
-        {loading ? "Running..." : "Run (⌘/Ctrl+Enter)"}
+      <div className="code-frame">
+        <CodeMirror
+          value={sql}
+          height="140px"
+          theme="dark"
+          extensions={[sqlLang()]}
+          basicSetup={{ foldGutter: false }}
+          onChange={setSql}
+        />
+      </div>
+      <button className="run-btn" onClick={onRun} disabled={loading}>
+        {loading ? <span className="spinner" /> : "Run"}
+        <span className="shortcut">⌘/Ctrl + Enter</span>
       </button>
     </div>
   );
