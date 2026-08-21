@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Data
+backend/datalens.db
+
+# Env
+.env
+
+# Node (for later, frontend/)
+node_modules/
+dist/
+
+# OS
+.DS_Store
