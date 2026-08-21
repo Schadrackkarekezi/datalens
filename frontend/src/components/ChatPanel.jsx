@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import ResultsTable from "./ResultsTable";
 import ReasoningTrace from "./ReasoningTrace";
 import { askQuestion, clearConversation } from "../api";
@@ -40,7 +41,7 @@ function Exchange({ entry }) {
 
             {data.response_type === "chat" ? (
               <div className="chat-reply">
-                <p>{data.message}</p>
+                <ReactMarkdown>{data.message}</ReactMarkdown>
                 <span className="chat-cost">
                   {data.prompt_tokens + data.completion_tokens} tokens · $
                   {data.estimated_cost_usd.toFixed(5)}
