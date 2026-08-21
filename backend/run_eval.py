@@ -1,11 +1,21 @@
 """
 Evaluation harness for the /ask agent.
 
-Calls agent.run_ask() directly (no HTTP hop) for every question in
-eval_set.json, checks the result against expectations, and prints an
-accuracy report. For "ambiguous" questions (no matching data in the
-schema), a *pass* means the agent correctly replied in chat mode instead
-of hallucinating a SQL query to answer something the data can't support.
+Two suites, run together:
+
+  1. Single-turn (eval_set.json) — one question each, checked three ways:
+     deterministic pattern/row-count checks (fast, free, catch obviously
+     wrong SQL) AND an LLM-as-judge semantic check (judge.py — catches SQL
+     that looks plausible but answers the wrong question). For "ambiguous"
+     questions, a pass means the agent replied in chat mode instead of
+     hallucinating a query the data can't support.
+
+  2. Multi-turn (eval_conversations.json) — sequences of questions run
+     through run_ask() with accumulating history, exactly like a real
+     conversation. This is what regression-tests follow-up resolution
+     ("now break that down by department") instead of relying on a single
+     manual spot-check.
+
 AgentError (retries exhausted on genuinely broken SQL) always counts as a
 failure — that's a real bug, not a valid outcome for any eval case.
 
@@ -16,12 +26,26 @@ import json
 import time
 
 from agent import run_ask, AgentError
+from judge import judge_sql_answer
 
 EVAL_SET_PATH = "eval_set.json"
+EVAL_CONVERSATIONS_PATH = "eval_conversations.json"
 RESULTS_PATH = "eval_results.json"
 
 
-def check_sql_case(case: dict, result: dict) -> tuple[bool, str]:
+def _history_turn(question: str, result: dict) -> dict:
+    if result["response_type"] == "sql":
+        return {
+            "type": "sql",
+            "question": question,
+            "sql": result["generated_sql"],
+            "row_count": result["row_count"],
+            "columns": result["columns"],
+        }
+    return {"type": "chat", "question": question, "message": result["message"]}
+
+
+def check_sql_case(case: dict, result: dict, history: list = None) -> tuple[bool, str]:
     if result["response_type"] != "sql":
         return False, f"expected a SQL answer, agent replied in chat mode: {result['message']}"
 
@@ -35,7 +59,18 @@ def check_sql_case(case: dict, result: dict) -> tuple[bool, str]:
     if expected_rows is not None and result["row_count"] != expected_rows:
         return False, f"expected {expected_rows} row(s), got {result['row_count']}"
 
-    return True, "ok"
+    verdict = judge_sql_answer(
+        case["question"],
+        result["generated_sql"],
+        result["columns"],
+        result["rows"],
+        glossary_context=result["retrieved_context"],
+        history=history,
+    )
+    if not verdict.correct:
+        return False, f"judge flagged as semantically wrong: {verdict.reasoning}"
+
+    return True, f"ok — judge: {verdict.reasoning}"
 
 
 def run_case(case: dict) -> dict:
@@ -79,19 +114,62 @@ def run_case(case: dict) -> dict:
         }
 
 
+def run_conversation_case(scenario: dict) -> dict:
+    history = []
+    turn_results = []
+    all_passed = True
+
+    for turn in scenario["turns"]:
+        start = time.perf_counter()
+        try:
+            result = run_ask(turn["question"], history=history)
+        except AgentError as e:
+            all_passed = False
+            turn_results.append({"question": turn["question"], "passed": False, "reason": f"agent error: {e}"})
+            break
+
+        latency_ms = round((time.perf_counter() - start) * 1000, 2)
+        history_before_this_turn = list(history)  # same context the agent itself saw
+        history.append(_history_turn(turn["question"], result))
+
+        if turn.get("expect_chat"):
+            passed = result["response_type"] == "chat"
+            reason = "ok" if passed else f"expected a chat reply, got SQL: {result.get('generated_sql')}"
+        else:
+            passed, reason = check_sql_case(turn, result, history=history_before_this_turn)
+
+        if not passed:
+            all_passed = False
+        turn_results.append({
+            "question": turn["question"],
+            "passed": passed,
+            "reason": reason,
+            "latency_ms": latency_ms,
+        })
+
+    return {"name": scenario["name"], "passed": all_passed, "turns": turn_results}
+
+
 def main():
     with open(EVAL_SET_PATH) as f:
         eval_set = json.load(f)
+    with open(EVAL_CONVERSATIONS_PATH) as f:
+        conversations = json.load(f)
 
     results = [run_case(case) for case in eval_set]
+    conversation_results = [run_conversation_case(scenario) for scenario in conversations]
 
     total = len(results)
     passed = sum(r["passed"] for r in results)
     accuracy = round(100 * passed / total, 1)
     avg_latency = round(sum(r["latency_ms"] for r in results) / total, 1)
 
+    convo_total = len(conversation_results)
+    convo_passed = sum(c["passed"] for c in conversation_results)
+
     print(f"\n{'=' * 60}")
-    print(f"DataLens Agent Eval — {passed}/{total} passed ({accuracy}%)")
+    print(f"DataLens Agent Eval — {passed}/{total} single-turn passed ({accuracy}%)")
+    print(f"Conversations — {convo_passed}/{convo_total} passed")
     print(f"Average latency: {avg_latency} ms")
     print(f"{'=' * 60}\n")
 
@@ -109,9 +187,29 @@ def main():
                 print(f"      -> {c['reason']}")
         print()
 
+    print("[conversations]")
+    for c in conversation_results:
+        mark = "✅" if c["passed"] else "❌"
+        print(f"  {mark} {c['name']}")
+        for t in c["turns"]:
+            tmark = "✅" if t["passed"] else "❌"
+            print(f"      {tmark} {t['question']}")
+            if not t["passed"]:
+                print(f"          -> {t['reason']}")
+    print()
+
     with open(RESULTS_PATH, "w") as f:
         json.dump(
-            {"accuracy": accuracy, "passed": passed, "total": total, "avg_latency_ms": avg_latency, "results": results},
+            {
+                "accuracy": accuracy,
+                "passed": passed,
+                "total": total,
+                "avg_latency_ms": avg_latency,
+                "conversations_passed": convo_passed,
+                "conversations_total": convo_total,
+                "results": results,
+                "conversation_results": conversation_results,
+            },
             f,
             indent=2,
         )

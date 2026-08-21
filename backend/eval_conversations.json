@@ -1,0 +1,49 @@
+[
+  {
+    "name": "closed_won_by_department_followup",
+    "turns": [
+      {
+        "question": "How many deals are closed_won?",
+        "expected_sql_pattern": "closed_won",
+        "expected_row_count": 1
+      },
+      {
+        "question": "now break that down by department",
+        "expected_sql_pattern": "department",
+        "expected_row_count": 1,
+        "note": "Tests that 'that' correctly resolves to closed_won deals from turn 1, not all deals."
+      }
+    ]
+  },
+  {
+    "name": "win_rate_then_meta_question",
+    "turns": [
+      {
+        "question": "What is our win rate?",
+        "expected_sql_pattern": "closed_won",
+        "expected_row_count": 1
+      },
+      {
+        "question": "are you sure about this?",
+        "expect_chat": true,
+        "note": "Tests the chat/sql split: a meta-question about the prior answer should get a conversational reply, not a hallucinated new query."
+      }
+    ]
+  },
+  {
+    "name": "pipeline_value_then_count",
+    "turns": [
+      {
+        "question": "What's our current pipeline value?",
+        "expected_sql_pattern": "prospecting",
+        "expected_row_count": 1
+      },
+      {
+        "question": "and how many deals is that across?",
+        "expected_sql_pattern": "prospecting",
+        "expected_row_count": 1,
+        "note": "Tests that 'that' correctly carries over the active-deal filter, not all deals."
+      }
+    ]
+  }
+]
