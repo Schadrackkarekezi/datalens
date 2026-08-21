@@ -82,16 +82,22 @@ export default function App() {
             )}
           </div>
 
-          {mode === "query" && (
-            <>
-              <QueryEditor sql={sql} setSql={setSql} onRun={handleRun} loading={loading} />
-              {error && <div className="error-banner">{error}</div>}
-              <ResultsTable result={result} loading={loading} />
-            </>
-          )}
+          {/* All three panels stay mounted so switching tabs never loses state
+              (query history, the active conversation, dashboard scroll) — only
+              visibility toggles. */}
+          <div style={{ display: mode === "query" ? "block" : "none" }}>
+            <QueryEditor sql={sql} setSql={setSql} onRun={handleRun} loading={loading} />
+            {error && <div className="error-banner">{error}</div>}
+            <ResultsTable result={result} loading={loading} />
+          </div>
 
-          {mode === "ask" && <ChatPanel />}
-          {mode === "logs" && <Dashboard active={mode === "logs"} />}
+          <div style={{ display: mode === "ask" ? "block" : "none" }}>
+            <ChatPanel />
+          </div>
+
+          <div style={{ display: mode === "logs" ? "block" : "none" }}>
+            <Dashboard active={mode === "logs"} />
+          </div>
         </main>
       </div>
     </div>

@@ -1,48 +1,56 @@
 import { useState } from "react";
 import ResultsTable from "./ResultsTable";
-import { askQuestion } from "../api";
+import ReasoningTrace from "./ReasoningTrace";
+import { askQuestion, clearConversation } from "../api";
+
+const SUGGESTIONS = [
+  "What is our win rate?",
+  "What's our current pipeline value?",
+  "Which employees logged the most activities on deals for the Analytics Suite product?",
+  "How many calls were logged for deals belonging to SaaS customers?",
+  "What's our customer churn rate?",
+];
+
+function newConversationId() {
+  return crypto.randomUUID();
+}
 
 function Exchange({ entry }) {
-  const [showContext, setShowContext] = useState(false);
   const { question, error, data } = entry;
 
   return (
     <div className="chat-exchange">
-      <div className="chat-question">{question}</div>
+      <div className="chat-question">
+        <span className="chat-avatar user">Y</span>
+        {question}
+      </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && (
+        <div className="chat-answer">
+          <span className="chat-avatar agent">AI</span>
+          <div className="error-banner">{error}</div>
+        </div>
+      )}
 
       {data && (
         <div className="chat-answer">
-          {data.retrieved_context.length > 0 && (
-            <div className="chat-context">
-              <button className="chat-context-toggle" onClick={() => setShowContext((v) => !v)}>
-                {showContext ? "▼" : "▶"} Retrieved context ({data.retrieved_context.length})
-              </button>
-              {showContext && (
-                <ul>
-                  {data.retrieved_context.map((c) => (
-                    <li key={c.term}>
-                      <strong>{c.term}</strong>: {c.definition}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+          <span className="chat-avatar agent">AI</span>
+          <div className="chat-answer-body">
+            <ReasoningTrace trace={data.trace} />
 
-          <div className="chat-sql">
-            <div className="chat-sql-label">
-              Generated SQL{data.attempts > 1 ? ` (took ${data.attempts} attempts)` : ""}
-              <span className="chat-cost">
-                {data.prompt_tokens + data.completion_tokens} tokens · $
-                {data.estimated_cost_usd.toFixed(5)}
-              </span>
+            <div className="chat-sql">
+              <div className="chat-sql-label">
+                Generated SQL{data.attempts > 1 ? ` (took ${data.attempts} attempts)` : ""}
+                <span className="chat-cost">
+                  {data.prompt_tokens + data.completion_tokens} tokens · $
+                  {data.estimated_cost_usd.toFixed(5)}
+                </span>
+              </div>
+              <pre>{data.generated_sql}</pre>
             </div>
-            <pre>{data.generated_sql}</pre>
+
+            <ResultsTable result={data} loading={false} />
           </div>
-
-          <ResultsTable result={data} loading={false} />
         </div>
       )}
     </div>
@@ -53,15 +61,15 @@ export default function ChatPanel() {
   const [question, setQuestion] = useState("");
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState(newConversationId);
 
-  const handleAsk = async () => {
-    if (!question.trim() || loading) return;
-    const q = question;
+  const send = async (q) => {
+    if (!q.trim() || loading) return;
     setQuestion("");
     setLoading(true);
 
     try {
-      const data = await askQuestion(q);
+      const data = await askQuestion(q, conversationId);
       setHistory((prev) => [...prev, { question: q, data }]);
     } catch (err) {
       setHistory((prev) => [...prev, { question: q, error: err.message }]);
@@ -70,6 +78,8 @@ export default function ChatPanel() {
     }
   };
 
+  const handleAsk = () => send(question);
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -77,12 +87,36 @@ export default function ChatPanel() {
     }
   };
 
+  const handleNewConversation = () => {
+    clearConversation(conversationId);
+    setConversationId(newConversationId());
+    setHistory([]);
+  };
+
   return (
     <div className="chat-panel">
+      <div className="chat-toolbar">
+        <span className="chat-toolbar-hint">
+          {history.length > 0 ? "Follow-up questions use this conversation's context" : "Ask in plain English"}
+        </span>
+        {history.length > 0 && (
+          <button className="new-conversation-btn" onClick={handleNewConversation}>
+            + New conversation
+          </button>
+        )}
+      </div>
+
       <div className="chat-history">
         {history.length === 0 && (
           <div className="chat-empty">
-            Ask a question in plain English — e.g. "What's our win rate by department?"
+            <p>Ask a question about your data — or try one of these:</p>
+            <div className="suggestion-chips">
+              {SUGGESTIONS.map((s) => (
+                <button key={s} className="suggestion-chip" onClick={() => send(s)}>
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {history.map((entry, i) => (
@@ -90,19 +124,26 @@ export default function ChatPanel() {
         ))}
         {loading && (
           <div className="chat-exchange">
-            <div className="chat-question">{question || "…"}</div>
-            <div className="chat-thinking">
-              <span className="spinner" /> thinking…
+            <div className="chat-question">
+              <span className="chat-avatar user">Y</span>
+              {question || "…"}
+            </div>
+            <div className="chat-answer">
+              <span className="chat-avatar agent">AI</span>
+              <div className="chat-thinking">
+                <span className="spinner" /> thinking…
+              </div>
             </div>
           </div>
         )}
       </div>
+
       <div className="chat-input-row">
         <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask a question about your data…"
+          placeholder={history.length > 0 ? "Ask a follow-up…" : "Ask a question about your data…"}
           rows={2}
         />
         <button className="run-btn" onClick={handleAsk} disabled={loading}>

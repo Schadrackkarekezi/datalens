@@ -25,15 +25,22 @@ export async function runQuery(sql) {
   return data;
 }
 
-export async function askQuestion(question) {
+export async function askQuestion(question, conversationId) {
   const res = await fetch(`${BASE_URL}/ask`, {
     method: "POST",
     headers: headers({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, conversation_id: conversationId }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || `Ask failed (${res.status})`);
   return data;
+}
+
+export async function clearConversation(conversationId) {
+  await fetch(`${BASE_URL}/conversations/${conversationId}`, {
+    method: "DELETE",
+    headers: headers(),
+  });
 }
 
 export async function getLogs(limit = 50) {
