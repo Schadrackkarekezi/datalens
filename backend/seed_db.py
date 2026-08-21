@@ -10,6 +10,8 @@ import sqlite3
 import random
 from datetime import datetime, timedelta
 
+random.seed(42)  # deterministic data so eval expectations don't drift on reseed
+
 DB_PATH = "datalens.db"
 
 # ---- Sample data pools (for generating realistic-looking rows) ----

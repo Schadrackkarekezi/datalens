@@ -4,14 +4,22 @@ A SQL query tool with an AI agent layer (RAG-backed), evaluation framework, and 
 
 **Purpose:** Portfolio project demonstrating engineering depth — for founder outreach, AI Engineer / FDE / Data Scientist / Data Engineer roles.
 
-**Stack:** React (frontend) + FastAPI (backend) + SQLite (data) + FAISS or Pinecone (vector DB) + GPT-4o or Claude API (LLM) + Render/Railway + Vercel (deployment)
+**Stack:** React (frontend) + FastAPI (backend) + SQLite (data) + FAISS (vector DB) + OpenAI API (LLM, model configurable via `OPENAI_MODEL`, default `gpt-4o`) + Render/Railway + Vercel (deployment)
 
 **Time budget:** ~1.5–2 hrs/day. **Rule: if a week runs behind, cut scope for that week — never push the final ship date.**
 
 ---
 
 ## Current status
-✅ Day 1-2 complete: `backend/seed_db.py` creates `datalens.db` with 4 tables (`departments`, `employees`, `customers`, `deals`) and realistic sample data (30 employees, 25 customers, 120 deals). Verified working with join queries.
+✅ Week 1 complete: FastAPI backend (`/schema`, `/query` with SELECT-only safety guard) + React frontend (schema browser, CodeMirror query editor, sortable results, query history) — all tested end to end.
+
+✅ Week 2 built (untested — needs an `OPENAI_API_KEY` to actually run): `POST /ask` is a multi-step pipeline, not a single LLM call — retrieve (FAISS + `glossary.json`) → generate SQL (structured output via `client.chat.completions.parse`) → execute through the *same* safety-checked `query_engine.run_select()` the manual query box uses → on failure, feed the SQLite error back to the model and retry (up to 3 attempts) → return, with a full step-by-step `trace`. `ChatPanel.jsx` is the frontend for it.
+
+✅ Week 3 built (untested): `eval_set.json` (18 questions — simple/join/glossary/ambiguous categories, grounded against the actual seeded data) + `run_eval.py`, which calls `agent.run_ask()` directly and scores accuracy. Seed data is now deterministic (`random.seed(42)` in `seed_db.py`) so eval expectations don't drift on reseed.
+
+✅ Week 4 built (untested): `logger.py` appends every `/ask` call to `query_logs.jsonl` (question, generated SQL, attempts, latency, success/failure) — a JSONL file rather than a SQLite table, so the log doesn't show up as a fake "table" in `/schema`. `GET /logs` + `Dashboard.jsx` render it as a stats row + latency bar chart + log table.
+
+**Not yet done:** running the Week 2-4 eval/logging loop for real (blocked on an OpenAI API key), iterating on eval failures to get a before/after accuracy number, the real portfolio-facing README, and deployment (Day 28-30).
 
 ---
 
@@ -105,18 +113,18 @@ frontend/
 
 **Endpoint:** `POST /ask`
 - Request: `{"question": "What are the top 5 highest value deals?"}`
-- Logic:
-  1. Send the question + full schema (from `/schema` logic) to the LLM
-  2. Prompt: "Given this schema: {schema}. Write a SQLite SELECT query to answer: {question}. Return ONLY the SQL, no explanation."
-  3. Execute the returned SQL against the database (reuse `/query` logic)
-  4. Return both the generated SQL and the results
+- **Built as an explicit multi-step pipeline, not one LLM call:** retrieve → generate SQL → execute → on failure, feed the SQLite error back to the model and retry (capped at 3 attempts) → return. Each step is timed and recorded in a `trace` list on the response — this is what makes it a genuine agentic workflow instead of a single API call, and it's also what Week 4's observability layer logs.
+- The AI-generated SQL runs through `query_engine.run_select()` — the exact same SELECT-only-guarded function the manual query box uses. The agent gets no special privileges just because it wrote the SQL itself.
 - Response shape:
   ```json
   {
     "question": "...",
     "generated_sql": "SELECT ...",
     "columns": [...],
-    "rows": [...]
+    "rows": [...],
+    "attempts": 1,
+    "retrieved_context": [...],
+    "trace": [...]
   }
   ```
 

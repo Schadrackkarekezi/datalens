@@ -1,3 +1,7 @@
 fastapi
 uvicorn[standard]
 pydantic
+openai
+faiss-cpu
+sentence-transformers
+python-dotenv

@@ -1,0 +1,110 @@
+[
+  {
+    "question": "How many total deals are there?",
+    "category": "simple",
+    "expected_sql_pattern": "deals",
+    "expected_row_count": 1
+  },
+  {
+    "question": "How many deals are closed_won?",
+    "category": "simple",
+    "expected_sql_pattern": "closed_won",
+    "expected_row_count": 1
+  },
+  {
+    "question": "How many departments do we have?",
+    "category": "simple",
+    "expected_sql_pattern": "departments",
+    "expected_row_count": 1
+  },
+  {
+    "question": "How many customers are in the SaaS industry?",
+    "category": "simple",
+    "expected_sql_pattern": "saas",
+    "expected_row_count": 1
+  },
+  {
+    "question": "How many employees work in the Sales department?",
+    "category": "join",
+    "expected_sql_pattern": "sales",
+    "expected_row_count": 1
+  },
+  {
+    "question": "Who is the top performer by total closed-won deal value?",
+    "category": "join",
+    "expected_sql_pattern": "closed_won",
+    "expected_row_count": 1
+  },
+  {
+    "question": "What is the total value of closed_won deals, broken down by department?",
+    "category": "join",
+    "expected_sql_pattern": "closed_won",
+    "expected_row_count": 1
+  },
+  {
+    "question": "How many distinct customers have at least one closed_won deal?",
+    "category": "join",
+    "expected_sql_pattern": "closed_won",
+    "expected_row_count": 1
+  },
+  {
+    "question": "What is our win rate?",
+    "category": "glossary",
+    "expected_sql_pattern": "closed_won",
+    "expected_row_count": 1
+  },
+  {
+    "question": "What is our current pipeline value?",
+    "category": "glossary",
+    "expected_sql_pattern": "prospecting",
+    "expected_row_count": 1
+  },
+  {
+    "question": "How many active deals do we have right now?",
+    "category": "glossary",
+    "expected_sql_pattern": "prospecting",
+    "expected_row_count": 1
+  },
+  {
+    "question": "What is our average deal size?",
+    "category": "glossary",
+    "expected_sql_pattern": "avg",
+    "expected_row_count": 1
+  },
+  {
+    "question": "What is our win rate by department?",
+    "category": "glossary",
+    "expected_sql_pattern": "closed_won",
+    "expected_row_count": 1
+  },
+  {
+    "question": "What is the sales cycle length in days?",
+    "category": "glossary",
+    "expected_sql_pattern": "created_date",
+    "expected_row_count": 1
+  },
+  {
+    "question": "How many new customers have signed up recently?",
+    "category": "glossary",
+    "expected_sql_pattern": "signup_date",
+    "expected_row_count": 1
+  },
+  {
+    "question": "What's our best-selling product this quarter?",
+    "category": "ambiguous",
+    "expect_failure": true,
+    "note": "There is no products table — a good agent should fail gracefully or say it can't answer, not hallucinate a table."
+  },
+  {
+    "question": "What's the forecast for next quarter's revenue?",
+    "category": "ambiguous",
+    "expect_failure": true,
+    "note": "No forecasting data exists in the schema — this should not be answerable from historical deal data alone."
+  },
+  {
+    "question": "How satisfied are our customers on average?",
+    "category": "ambiguous",
+    "expect_failure": true,
+    "note": "No satisfaction/NPS data exists in the schema."
+  }
+]

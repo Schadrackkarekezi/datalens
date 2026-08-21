@@ -6,6 +6,8 @@ venv/
 
 # Data
 backend/datalens.db
+backend/query_logs.jsonl
+backend/eval_results.json
 
 # Env
 .env

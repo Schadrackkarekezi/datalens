@@ -4,6 +4,8 @@ import SchemaBrowser from "./components/SchemaBrowser";
 import QueryEditor from "./components/QueryEditor";
 import QueryHistory from "./components/QueryHistory";
 import ResultsTable from "./components/ResultsTable";
+import ChatPanel from "./components/ChatPanel";
+import Dashboard from "./components/Dashboard";
 import { runQuery } from "./api";
 
 const HISTORY_KEY = "datalens_query_history";
@@ -24,6 +26,7 @@ export default function App() {
   const [connected, setConnected] = useState(null);
   const [activeTable, setActiveTable] = useState(null);
   const [history, setHistory] = useState(loadHistory);
+  const [mode, setMode] = useState("query");
 
   useEffect(() => {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
@@ -63,12 +66,32 @@ export default function App() {
         />
         <main>
           <div className="toolbar">
-            <h1>Query Editor</h1>
-            <QueryHistory history={history} onSelect={setSql} onClear={() => setHistory([])} />
+            <div className="mode-tabs">
+              <button className={mode === "query" ? "active" : ""} onClick={() => setMode("query")}>
+                Query Editor
+              </button>
+              <button className={mode === "ask" ? "active" : ""} onClick={() => setMode("ask")}>
+                Ask AI
+              </button>
+              <button className={mode === "logs" ? "active" : ""} onClick={() => setMode("logs")}>
+                Observability
+              </button>
+            </div>
+            {mode === "query" && (
+              <QueryHistory history={history} onSelect={setSql} onClear={() => setHistory([])} />
+            )}
           </div>
-          <QueryEditor sql={sql} setSql={setSql} onRun={handleRun} loading={loading} />
-          {error && <div className="error-banner">{error}</div>}
-          <ResultsTable result={result} loading={loading} />
+
+          {mode === "query" && (
+            <>
+              <QueryEditor sql={sql} setSql={setSql} onRun={handleRun} loading={loading} />
+              {error && <div className="error-banner">{error}</div>}
+              <ResultsTable result={result} loading={loading} />
+            </>
+          )}
+
+          {mode === "ask" && <ChatPanel />}
+          {mode === "logs" && <Dashboard active={mode === "logs"} />}
         </main>
       </div>
     </div>
