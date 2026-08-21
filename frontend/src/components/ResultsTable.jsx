@@ -37,12 +37,17 @@ export default function ResultsTable({ result, loading }) {
     return <div className="results-empty">Run a query to see results here.</div>;
   }
 
-  const { columns, row_count, execution_time_ms } = result;
+  const { columns, row_count, execution_time_ms, truncated } = result;
 
   return (
     <div className="results-table">
       <div className="results-meta">
         {row_count} rows · {execution_time_ms} ms
+        {truncated && (
+          <span className="truncated-badge">
+            truncated at {row_count} rows — refine your query to see more
+          </span>
+        )}
       </div>
       <div className="table-scroll">
         <table>

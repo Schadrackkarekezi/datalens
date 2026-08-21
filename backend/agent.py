@@ -18,6 +18,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel
 
+from costs import estimate_cost_usd
 from database import get_connection, fetch_schema
 from query_engine import run_select, QueryError
 from rag import retrieve
@@ -59,17 +60,24 @@ def _format_glossary(entries) -> str:
     return "\n".join(f"- {e['term']}: {e['definition']}" for e in entries)
 
 
-def _generate_sql(system_prompt: str, messages: list) -> str:
+def _generate_sql(system_prompt: str, messages: list):
     response = _get_client().chat.completions.parse(
         model=MODEL,
         messages=[{"role": "system", "content": system_prompt}] + messages,
         response_format=SQLGeneration,
     )
-    return response.choices[0].message.parsed.sql.strip()
+    sql = response.choices[0].message.parsed.sql.strip()
+    usage = {
+        "prompt_tokens": response.usage.prompt_tokens,
+        "completion_tokens": response.usage.completion_tokens,
+    }
+    return sql, usage
 
 
 def run_ask(question: str):
     trace = []
+    total_prompt_tokens = 0
+    total_completion_tokens = 0
 
     t0 = time.perf_counter()
     context = retrieve(question, top_k=3)
@@ -99,12 +107,14 @@ only the SQL query — no markdown fences, no explanation."""
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         t1 = time.perf_counter()
-        sql = _generate_sql(system_prompt, messages)
+        sql, usage = _generate_sql(system_prompt, messages)
         gen_latency = round((time.perf_counter() - t1) * 1000, 2)
+        total_prompt_tokens += usage["prompt_tokens"]
+        total_completion_tokens += usage["completion_tokens"]
         messages.append({"role": "assistant", "content": sql})
 
         try:
-            columns, rows, exec_latency = run_select(sql)
+            columns, rows, exec_latency, truncated = run_select(sql)
         except QueryError as e:
             last_error = str(e)
             trace.append({
@@ -112,6 +122,7 @@ only the SQL query — no markdown fences, no explanation."""
                 "attempt": attempt,
                 "sql": sql,
                 "generate_latency_ms": gen_latency,
+                "tokens": usage,
                 "status": "error",
                 "error": last_error,
             })
@@ -127,9 +138,13 @@ only the SQL query — no markdown fences, no explanation."""
             "sql": sql,
             "generate_latency_ms": gen_latency,
             "execute_latency_ms": exec_latency,
+            "tokens": usage,
             "status": "success",
             "row_count": len(rows),
+            "truncated": truncated,
         })
+
+        estimated_cost = estimate_cost_usd(MODEL, total_prompt_tokens, total_completion_tokens)
 
         return {
             "question": question,
@@ -137,9 +152,13 @@ only the SQL query — no markdown fences, no explanation."""
             "columns": columns,
             "rows": rows,
             "row_count": len(rows),
+            "truncated": truncated,
             "attempts": attempt,
             "retrieved_context": context,
             "trace": trace,
+            "prompt_tokens": total_prompt_tokens,
+            "completion_tokens": total_completion_tokens,
+            "estimated_cost_usd": estimated_cost,
         }
 
     raise AgentError(f"Agent failed after {MAX_ATTEMPTS} attempts. Last error: {last_error}")

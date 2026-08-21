@@ -23,6 +23,7 @@ def log_ask(question: str, total_latency_ms: float, success: bool, result: dict 
         "attempts": result["attempts"] if result else None,
         "row_count": result["row_count"] if result else None,
         "retrieved_terms": [c["term"] for c in result["retrieved_context"]] if result else [],
+        "estimated_cost_usd": result["estimated_cost_usd"] if result else None,
         "error": error,
     }
     with LOG_PATH.open("a") as f:

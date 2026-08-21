@@ -23,6 +23,7 @@ export default function Dashboard({ active }) {
     entries.reduce((sum, e) => sum + e.total_latency_ms, 0) / entries.length
   );
   const maxLatency = Math.max(...entries.map((e) => e.total_latency_ms));
+  const totalCost = entries.reduce((sum, e) => sum + (e.estimated_cost_usd || 0), 0);
 
   return (
     <div className="dashboard">
@@ -38,6 +39,10 @@ export default function Dashboard({ active }) {
         <div className="stat-tile">
           <div className="stat-value">{avgLatency} ms</div>
           <div className="stat-label">Avg latency</div>
+        </div>
+        <div className="stat-tile">
+          <div className="stat-value">${totalCost.toFixed(4)}</div>
+          <div className="stat-label">Est. total cost</div>
         </div>
       </div>
 
@@ -65,6 +70,7 @@ export default function Dashboard({ active }) {
               <th>Attempts</th>
               <th>Rows</th>
               <th>Latency</th>
+              <th>Cost</th>
             </tr>
           </thead>
           <tbody>
@@ -80,6 +86,7 @@ export default function Dashboard({ active }) {
                 <td>{e.attempts ?? "—"}</td>
                 <td>{e.row_count ?? "—"}</td>
                 <td>{e.total_latency_ms} ms</td>
+                <td>{e.estimated_cost_usd != null ? `$${e.estimated_cost_usd.toFixed(5)}` : "—"}</td>
               </tr>
             ))}
           </tbody>

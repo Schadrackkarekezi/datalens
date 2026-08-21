@@ -33,6 +33,7 @@ class QueryResponse(BaseModel):
     rows: list[list[Any]]
     row_count: int
     execution_time_ms: float
+    truncated: bool
 
 
 class GlossaryHit(BaseModel):
@@ -51,9 +52,13 @@ class AskResponse(BaseModel):
     columns: list[str]
     rows: list[list[Any]]
     row_count: int
+    truncated: bool
     attempts: int
     retrieved_context: list[GlossaryHit]
     trace: list[dict[str, Any]]
+    prompt_tokens: int
+    completion_tokens: int
+    estimated_cost_usd: float
 
 
 class LogEntry(BaseModel):
@@ -61,11 +66,12 @@ class LogEntry(BaseModel):
     question: str
     success: bool
     total_latency_ms: float
-    generated_sql: Optional[str]
-    attempts: Optional[int]
-    row_count: Optional[int]
-    retrieved_terms: list[str]
-    error: Optional[str]
+    generated_sql: Optional[str] = None
+    attempts: Optional[int] = None
+    row_count: Optional[int] = None
+    retrieved_terms: list[str] = []
+    estimated_cost_usd: Optional[float] = None
+    error: Optional[str] = None
 
 
 class LogsResponse(BaseModel):

@@ -739,3 +739,17 @@ tbody tr:hover {
   background: rgba(255, 138, 138, 0.15);
   color: var(--red);
 }
+
+.truncated-badge {
+  margin-left: 10px;
+  color: var(--red);
+  font-size: 11px;
+}
+
+.chat-cost {
+  float: right;
+  color: var(--text-faint);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
