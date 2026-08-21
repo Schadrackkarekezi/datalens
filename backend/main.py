@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from auth import require_api_key
+from conversations import resolve_conversation_id, get_history, add_turn, clear_conversation
 from costs import estimate_cost_usd
 from database import get_connection, fetch_schema
 from query_engine import run_select, QueryError
@@ -76,8 +77,11 @@ def query(request: QueryRequest):
 )
 def ask(request: AskRequest):
     start = time.perf_counter()
+    conversation_id = resolve_conversation_id(request.conversation_id)
+    history = get_history(conversation_id)
+
     try:
-        result = run_ask(request.question)
+        result = run_ask(request.question, history=history)
     except AgentError as e:
         cost = estimate_cost_usd(AGENT_MODEL, e.prompt_tokens, e.completion_tokens)
         log_ask(
@@ -105,8 +109,21 @@ def ask(request: AskRequest):
         log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
         raise HTTPException(status_code=500, detail=detail)
 
+    add_turn(
+        conversation_id,
+        question=request.question,
+        sql=result["generated_sql"],
+        row_count=result["row_count"],
+        columns=result["columns"],
+    )
     log_ask(request.question, (time.perf_counter() - start) * 1000, success=True, result=result)
-    return AskResponse(**result)
+    return AskResponse(**result, conversation_id=conversation_id)
+
+
+@app.delete("/conversations/{conversation_id}", dependencies=[Depends(require_api_key)])
+def delete_conversation(conversation_id: str):
+    clear_conversation(conversation_id)
+    return {"status": "cleared"}
 
 
 @app.get("/logs", response_model=LogsResponse, dependencies=[Depends(require_api_key)])

@@ -67,6 +67,22 @@ def _format_glossary(entries) -> str:
     return "\n".join(f"- {e['term']}: {e['definition']}" for e in entries)
 
 
+def _format_history(history) -> str:
+    if not history:
+        return ""
+    turns = []
+    for turn in history:
+        turns.append(
+            f"Q: {turn['question']}\nSQL: {turn['sql']}\n"
+            f"(returned {turn['row_count']} row(s); columns: {', '.join(turn['columns'])})"
+        )
+    return (
+        "\n\nPrevious turns in this conversation — use these to resolve follow-ups "
+        "like \"that\", \"those\", \"now filter by...\", \"break that down by...\":\n\n"
+        + "\n\n".join(turns)
+    )
+
+
 def _generate_sql(system_prompt: str, messages: list):
     response = _get_client().chat.completions.parse(
         model=MODEL,
@@ -81,7 +97,7 @@ def _generate_sql(system_prompt: str, messages: list):
     return parsed, usage
 
 
-def run_ask(question: str):
+def run_ask(question: str, history: list = None):
     trace = []
     total_prompt_tokens = 0
     total_completion_tokens = 0
@@ -92,6 +108,7 @@ def run_ask(question: str):
         "step": "retrieve",
         "latency_ms": round((time.perf_counter() - t0) * 1000, 2),
         "retrieved_terms": [c["term"] for c in context],
+        "history_turns_used": len(history) if history else 0,
     })
 
     t_graph = time.perf_counter()
@@ -121,6 +138,7 @@ Schema:
 Relevant business term definitions:
 {_format_glossary(context)}
 {join_hint}
+{_format_history(history)}
 
 If the question can be answered using only the tables, columns, and business
 terms above, set can_answer to true and write a single SQLite SELECT query

@@ -44,6 +44,7 @@ class GlossaryHit(BaseModel):
 
 class AskRequest(BaseModel):
     question: str
+    conversation_id: Optional[str] = None
 
 
 class AskResponse(BaseModel):
@@ -59,6 +60,7 @@ class AskResponse(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     estimated_cost_usd: float
+    conversation_id: str
 
 
 class LogEntry(BaseModel):
