@@ -13,6 +13,7 @@ this trace is what Week 4's observability layer logs and displays.
 
 import os
 import time
+from typing import Optional
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -20,6 +21,7 @@ from pydantic import BaseModel
 
 from costs import estimate_cost_usd
 from database import get_connection, fetch_schema
+from knowledge_graph import find_relevant_entities, find_join_paths
 from query_engine import run_select, QueryError
 from rag import retrieve
 
@@ -39,11 +41,16 @@ def _get_client():
 
 
 class SQLGeneration(BaseModel):
-    sql: str
+    can_answer: bool
+    reason: Optional[str] = None  # why not, when can_answer is False
+    sql: Optional[str] = None
 
 
 class AgentError(Exception):
-    pass
+    def __init__(self, message, prompt_tokens=0, completion_tokens=0):
+        super().__init__(message)
+        self.prompt_tokens = prompt_tokens
+        self.completion_tokens = completion_tokens
 
 
 def _format_schema(tables) -> str:
@@ -66,12 +73,12 @@ def _generate_sql(system_prompt: str, messages: list):
         messages=[{"role": "system", "content": system_prompt}] + messages,
         response_format=SQLGeneration,
     )
-    sql = response.choices[0].message.parsed.sql.strip()
+    parsed = response.choices[0].message.parsed
     usage = {
         "prompt_tokens": response.usage.prompt_tokens,
         "completion_tokens": response.usage.completion_tokens,
     }
-    return sql, usage
+    return parsed, usage
 
 
 def run_ask(question: str):
@@ -87,8 +94,24 @@ def run_ask(question: str):
         "retrieved_terms": [c["term"] for c in context],
     })
 
+    t_graph = time.perf_counter()
+    relevant_entities = find_relevant_entities(question)
+    join_paths = find_join_paths(relevant_entities)
+    trace.append({
+        "step": "graph_lookup",
+        "latency_ms": round((time.perf_counter() - t_graph) * 1000, 2),
+        "relevant_entities": relevant_entities,
+        "join_paths": join_paths,
+    })
+
     with get_connection() as conn:
         tables = fetch_schema(conn)
+
+    join_hint = ""
+    if join_paths:
+        join_hint = "\n\nRelevant table relationships (use these exact join paths):\n" + "\n".join(
+            f"- {p}" for p in join_paths
+        )
 
     system_prompt = f"""You are a SQLite expert helping analyze a business database.
 
@@ -97,20 +120,44 @@ Schema:
 
 Relevant business term definitions:
 {_format_glossary(context)}
+{join_hint}
 
-Write a single SQLite SELECT query that answers the user's question. Use the
-business term definitions above when the question uses those terms. Return
-only the SQL query — no markdown fences, no explanation."""
+If the question can be answered using only the tables, columns, and business
+terms above, set can_answer to true and write a single SQLite SELECT query
+in sql — no markdown fences, no explanation. If the question asks for
+something this schema has no data for (forecasts, predictions, satisfaction
+or sentiment scores, churn, external/competitor data, anything not
+represented by a table or column above), set can_answer to false, leave sql
+empty, and briefly explain why in reason. Do not guess or approximate an
+answer with unrelated columns — an honest "can't answer" is correct; a
+plausible-looking wrong query is not."""
 
     messages = [{"role": "user", "content": question}]
     last_error = None
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         t1 = time.perf_counter()
-        sql, usage = _generate_sql(system_prompt, messages)
+        parsed, usage = _generate_sql(system_prompt, messages)
         gen_latency = round((time.perf_counter() - t1) * 1000, 2)
         total_prompt_tokens += usage["prompt_tokens"]
         total_completion_tokens += usage["completion_tokens"]
+
+        if not parsed.can_answer:
+            trace.append({
+                "step": "generate_and_execute",
+                "attempt": attempt,
+                "generate_latency_ms": gen_latency,
+                "tokens": usage,
+                "status": "declined",
+                "reason": parsed.reason,
+            })
+            raise AgentError(
+                f"This can't be answered from the current schema: {parsed.reason}",
+                prompt_tokens=total_prompt_tokens,
+                completion_tokens=total_completion_tokens,
+            )
+
+        sql = parsed.sql.strip()
         messages.append({"role": "assistant", "content": sql})
 
         try:
@@ -161,4 +208,8 @@ only the SQL query — no markdown fences, no explanation."""
             "estimated_cost_usd": estimated_cost,
         }
 
-    raise AgentError(f"Agent failed after {MAX_ATTEMPTS} attempts. Last error: {last_error}")
+    raise AgentError(
+        f"Agent failed after {MAX_ATTEMPTS} attempts. Last error: {last_error}",
+        prompt_tokens=total_prompt_tokens,
+        completion_tokens=total_completion_tokens,
+    )

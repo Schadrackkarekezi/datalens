@@ -5,10 +5,11 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from auth import require_api_key
+from costs import estimate_cost_usd
 from database import get_connection, fetch_schema
 from query_engine import run_select, QueryError
 from rate_limit import enforce_rate_limit
-from agent import run_ask, AgentError
+from agent import run_ask, AgentError, MODEL as AGENT_MODEL
 from logger import log_ask, read_logs
 from models import (
     ColumnInfo,
@@ -78,7 +79,14 @@ def ask(request: AskRequest):
     try:
         result = run_ask(request.question)
     except AgentError as e:
-        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=str(e))
+        cost = estimate_cost_usd(AGENT_MODEL, e.prompt_tokens, e.completion_tokens)
+        log_ask(
+            request.question,
+            (time.perf_counter() - start) * 1000,
+            success=False,
+            error=str(e),
+            estimated_cost_usd=cost,
+        )
         raise HTTPException(status_code=422, detail=str(e))
     except openai.AuthenticationError:
         detail = "OPENAI_API_KEY is missing or invalid — set it in backend/.env"

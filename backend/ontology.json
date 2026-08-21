@@ -1,0 +1,42 @@
+{
+  "entity_types": [
+    {
+      "table": "departments",
+      "description": "A business unit employees belong to.",
+      "aliases": ["department", "dept", "team", "org", "division"]
+    },
+    {
+      "table": "employees",
+      "description": "A staff member who can own deals and log activities against them.",
+      "aliases": ["employee", "employees", "rep", "reps", "salesperson", "staff", "performer"]
+    },
+    {
+      "table": "customers",
+      "description": "A company DataLens sells to.",
+      "aliases": ["customer", "customers", "client", "clients", "account", "accounts", "company"]
+    },
+    {
+      "table": "products",
+      "description": "An item or service sold as part of a deal.",
+      "aliases": ["product", "products", "item", "offering", "sku"]
+    },
+    {
+      "table": "deals",
+      "description": "A sales opportunity, tracked from prospecting through close.",
+      "aliases": ["deal", "deals", "opportunity", "opportunities", "sale", "sales", "pipeline"]
+    },
+    {
+      "table": "activities",
+      "description": "A logged interaction (call, email, meeting, demo) tied to a deal.",
+      "aliases": ["activity", "activities", "interaction", "touchpoint", "call", "calls", "meeting", "meetings", "email", "emails", "demo", "demos"]
+    }
+  ],
+  "relationship_labels": {
+    "employees.department_id": "works in",
+    "deals.customer_id": "belongs to",
+    "deals.owner_employee_id": "owned by",
+    "deals.product_id": "is for",
+    "activities.deal_id": "logged against",
+    "activities.employee_id": "performed by"
+  }
+}

@@ -90,10 +90,30 @@
     "expected_row_count": 1
   },
   {
-    "question": "What's our best-selling product this quarter?",
-    "category": "ambiguous",
-    "expect_failure": true,
-    "note": "There is no products table — a good agent should fail gracefully or say it can't answer, not hallucinate a table."
+    "question": "Which product has generated the most closed-won revenue?",
+    "category": "join",
+    "expected_sql_pattern": "closed_won",
+    "expected_row_count": 1
+  },
+  {
+    "question": "Who is the single employee who logged the most activities on deals for the Analytics Suite product?",
+    "category": "multi_hop",
+    "note": "Requires a 4-table join (employees -> activities -> deals -> products) — the case the knowledge-graph join-path hints exist for.",
+    "expected_sql_pattern": "activities",
+    "expected_row_count": 1
+  },
+  {
+    "question": "How many calls were logged for deals belonging to SaaS customers?",
+    "category": "multi_hop",
+    "note": "3-table join: activities -> deals -> customers.",
+    "expected_sql_pattern": "saas",
+    "expected_row_count": 1
+  },
+  {
+    "question": "What is the average deal value for deals involving the Custom Integration product?",
+    "category": "multi_hop",
+    "expected_sql_pattern": "custom integration",
+    "expected_row_count": 1
   },
   {
     "question": "What's the forecast for next quarter's revenue?",
@@ -106,5 +126,11 @@
     "category": "ambiguous",
     "expect_failure": true,
     "note": "No satisfaction/NPS data exists in the schema."
+  },
+  {
+    "question": "What's our customer churn rate?",
+    "category": "ambiguous",
+    "expect_failure": true,
+    "note": "No subscription/cancellation tracking exists in the schema — churn isn't computable from signup_date and deals alone."
   }
 ]

@@ -40,3 +40,33 @@ def fetch_schema(conn):
         tables.append({"name": name, "columns": columns})
 
     return tables
+
+
+def fetch_foreign_keys(conn):
+    """
+    Every FK edge in the schema, as (from_table, from_column, to_table, to_column).
+
+    This is what the knowledge graph in knowledge_graph.py is built from — the
+    graph's structure is the schema's actual foreign keys, not a hand-maintained
+    diagram that can drift from reality.
+    """
+    cur = conn.cursor()
+    table_names = [
+        row[0]
+        for row in cur.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+        ).fetchall()
+    ]
+
+    edges = []
+    for table in table_names:
+        for row in cur.execute(f"PRAGMA foreign_key_list({table})").fetchall():
+            # PRAGMA foreign_key_list columns: id, seq, table, from, to, on_update, on_delete, match
+            edges.append({
+                "from_table": table,
+                "from_column": row[3],
+                "to_table": row[2],
+                "to_column": row[4],
+            })
+
+    return edges

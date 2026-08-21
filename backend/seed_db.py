@@ -1,7 +1,7 @@
 """
 DataLens - Database Seed Script
 Creates a SQLite database with a realistic sample business schema:
-departments, employees, customers, deals.
+departments, employees, customers, products, deals, activities.
 
 Run this once to create/reset datalens.db
 """
@@ -21,13 +21,24 @@ LAST_NAMES = ["Smith", "Johnson", "Lee", "Patel", "Garcia", "Chen", "Brown", "Da
 COMPANIES = ["Acme Corp", "Globex", "Initech", "Umbrella Co", "Stark Industries",
              "Wayne Enterprises", "Hooli", "Soylent", "Massive Dynamic", "Cyberdyne"]
 DEAL_STAGES = ["prospecting", "negotiation", "closed_won", "closed_lost"]
+PRODUCTS = [
+    ("Analytics Suite", "Software", 12000),
+    ("Data Pipeline Pro", "Software", 25000),
+    ("Insight Dashboard", "Software", 8000),
+    ("Onboarding Package", "Services", 5000),
+    ("Enterprise Support Plan", "Services", 15000),
+    ("Custom Integration", "Services", 30000),
+]
+ACTIVITY_TYPES = ["call", "email", "meeting", "demo"]
 
 
 def create_schema(conn):
     cur = conn.cursor()
 
     cur.executescript("""
+    DROP TABLE IF EXISTS activities;
     DROP TABLE IF EXISTS deals;
+    DROP TABLE IF EXISTS products;
     DROP TABLE IF EXISTS customers;
     DROP TABLE IF EXISTS employees;
     DROP TABLE IF EXISTS departments;
@@ -54,16 +65,36 @@ def create_schema(conn):
         signup_date TEXT NOT NULL
     );
 
+    CREATE TABLE products (
+        product_id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        unit_price INTEGER NOT NULL
+    );
+
     CREATE TABLE deals (
         deal_id INTEGER PRIMARY KEY,
         customer_id INTEGER NOT NULL,
         owner_employee_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
         deal_value INTEGER NOT NULL,
         stage TEXT NOT NULL,
         created_date TEXT NOT NULL,
         closed_date TEXT,
         FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
-        FOREIGN KEY (owner_employee_id) REFERENCES employees(employee_id)
+        FOREIGN KEY (owner_employee_id) REFERENCES employees(employee_id),
+        FOREIGN KEY (product_id) REFERENCES products(product_id)
+    );
+
+    CREATE TABLE activities (
+        activity_id INTEGER PRIMARY KEY,
+        deal_id INTEGER NOT NULL,
+        employee_id INTEGER NOT NULL,
+        activity_type TEXT NOT NULL,
+        activity_date TEXT NOT NULL,
+        notes TEXT,
+        FOREIGN KEY (deal_id) REFERENCES deals(deal_id),
+        FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
     );
     """)
     conn.commit()
@@ -105,6 +136,13 @@ def seed_data(conn):
             (i, company, industry, signup)
         )
 
+    # Products
+    for i, (name, category, price) in enumerate(PRODUCTS, start=1):
+        cur.execute(
+            "INSERT INTO products (product_id, name, category, unit_price) VALUES (?, ?, ?, ?)",
+            (i, name, category, price)
+        )
+
     # Deals (120 deals, only owned by Sales dept employees for realism)
     sales_employee_ids = [row[0] for row in cur.execute(
         "SELECT employee_id FROM employees WHERE department_id = "
@@ -116,15 +154,33 @@ def seed_data(conn):
     for i in range(1, 121):
         customer_id = random.randint(1, 25)
         owner_id = random.choice(sales_employee_ids)
+        product_id = random.randint(1, len(PRODUCTS))
         deal_value = random.randint(5000, 500000)
         stage = random.choices(DEAL_STAGES, weights=[0.25, 0.2, 0.4, 0.15])[0]
         created = random_date(400, 5)
         closed = random_date(int(created[8:10]) if False else 200, 0) if stage in ("closed_won", "closed_lost") else None
         cur.execute(
-            "INSERT INTO deals (deal_id, customer_id, owner_employee_id, deal_value, stage, created_date, closed_date) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (i, customer_id, owner_id, deal_value, stage, created, closed)
+            "INSERT INTO deals (deal_id, customer_id, owner_employee_id, product_id, deal_value, stage, created_date, closed_date) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (i, customer_id, owner_id, product_id, deal_value, stage, created, closed)
         )
+
+    # Activities (2-6 logged interactions per deal, by the deal's owner)
+    deal_owners = {row[0]: row[1] for row in cur.execute(
+        "SELECT deal_id, owner_employee_id FROM deals"
+    ).fetchall()}
+
+    activity_id = 1
+    for deal_id, owner_id in deal_owners.items():
+        for _ in range(random.randint(2, 6)):
+            activity_type = random.choice(ACTIVITY_TYPES)
+            activity_date = random_date(390, 1)
+            cur.execute(
+                "INSERT INTO activities (activity_id, deal_id, employee_id, activity_type, activity_date, notes) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (activity_id, deal_id, owner_id, activity_type, activity_date, None)
+            )
+            activity_id += 1
 
     conn.commit()
 
@@ -136,7 +192,7 @@ if __name__ == "__main__":
 
     # Quick sanity check
     cur = conn.cursor()
-    for table in ["departments", "employees", "customers", "deals"]:
+    for table in ["departments", "employees", "customers", "products", "deals", "activities"]:
         count = cur.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         print(f"{table}: {count} rows")
 
