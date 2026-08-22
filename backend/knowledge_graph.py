@@ -44,7 +44,12 @@ def build_graph():
     graph = nx.DiGraph()
 
     for entity in ontology["entity_types"]:
-        graph.add_node(entity["table"], description=entity["description"], aliases=entity["aliases"])
+        graph.add_node(
+            entity["table"],
+            kind=entity.get("kind", "dimension"),
+            description=entity["description"],
+            aliases=entity["aliases"],
+        )
 
     with get_connection() as conn:
         edges = fetch_foreign_keys(conn)
@@ -62,6 +67,23 @@ def get_graph():
     if _graph is None:
         build_graph()
     return _graph
+
+
+def tables_by_kind() -> dict:
+    """
+    {"fact": [...], "dimension": [...]} — the classic dimensional-modeling
+    split (facts = transactional events, dimensions = reference data).
+    Presenting the schema this way, instead of as one flat table list,
+    gives the model the same structural cue Snowflake's semantic views
+    give Cortex Analyst: which tables to expect grouping/aggregation
+    against (facts) versus which ones are just descriptive lookups
+    (dimensions).
+    """
+    graph = get_graph()
+    result = {"fact": [], "dimension": []}
+    for table, data in graph.nodes(data=True):
+        result[data.get("kind", "dimension")].append(table)
+    return result
 
 
 def find_relevant_entities(question: str) -> list:

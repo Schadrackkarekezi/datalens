@@ -43,7 +43,7 @@ from pydantic import BaseModel
 
 from costs import estimate_cost_usd
 from database import get_connection, fetch_schema
-from knowledge_graph import find_relevant_entities, find_join_paths
+from knowledge_graph import find_relevant_entities, find_join_paths, tables_by_kind
 from query_engine import run_select, QueryError
 from rag import retrieve
 from verified_queries import find_verified_match
@@ -77,10 +77,28 @@ class AgentError(Exception):
 
 
 def _format_schema(tables) -> str:
+    """
+    Grouped into dimensions (reference data) vs facts (transactional
+    events) instead of one flat list — the same structural cue a
+    Snowflake semantic view gives Cortex Analyst: which tables to expect
+    grouping/aggregation against (facts) vs which are just lookups
+    (dimensions).
+    """
+    by_name = {t["name"]: t for t in tables}
+    kinds = tables_by_kind()
+
     lines = []
-    for t in tables:
-        cols = ", ".join(f"{c['name']} ({c['type']})" for c in t["columns"])
-        lines.append(f"- {t['name']}: {cols}")
+    for label, kind in [("Dimensions (reference data)", "dimension"), ("Facts (transactional events)", "fact")]:
+        names = kinds.get(kind, [])
+        if not names:
+            continue
+        lines.append(f"{label}:")
+        for name in names:
+            t = by_name.get(name)
+            if not t:
+                continue
+            cols = ", ".join(f"{c['name']} ({c['type']})" for c in t["columns"])
+            lines.append(f"- {name}: {cols}")
     return "\n".join(lines)
 
 
@@ -210,6 +228,26 @@ You have two response modes, chosen per turn:
 Never guess or approximate a data answer with unrelated columns just to
 have something in sql — an honest chat reply is correct; a plausible-
 looking wrong query is not.
+
+DO:
+- Use the exact glossary definition below for a business term when the
+  question uses it ("win rate", "active deal", "pipeline value", etc.) —
+  never infer your own definition for a term that's already defined.
+- Ground relative time phrases ("recently", "this quarter") in the data's
+  own most recent date, not today's real-world date — this is a static
+  demo dataset, not a live feed.
+- Use the join-path hints below exactly as given when a question spans
+  more than one table.
+
+DON'T:
+- Don't join the activities table into a query unless the question is
+  specifically about interactions, calls, meetings, or touchpoints — most
+  deal/revenue questions don't need it.
+- Don't assume closed_date IS NOT NULL means a deal was won — a
+  closed_lost deal also has a closed_date.
+- Don't invent a numeric threshold ("large deal", "recent hire") that
+  isn't defined in the glossary — decline in chat mode and ask what
+  threshold to use instead of guessing one.
 
 Schema:
 {_format_schema(tables)}

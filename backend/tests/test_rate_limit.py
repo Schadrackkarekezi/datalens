@@ -39,3 +39,4 @@ def test_different_clients_have_independent_limits(monkeypatch):
     monkeypatch.setattr(rate_limit, "MAX_REQUESTS_PER_WINDOW", 1)
     rate_limit.enforce_rate_limit(fake_request("1.1.1.1"))
     rate_limit.enforce_rate_limit(fake_request("2.2.2.2"))  # different IP, own budget
+
