@@ -21,7 +21,7 @@
   },
   {
     "term": "average deal size",
-    "definition": "The average deal_value across closed_won deals, unless the question specifies a different subset."
+    "definition": "When the question asks for 'average deal size' with no other qualifier, use the average deal_value across closed_won deals only. If the question names its own filter instead (e.g. 'average deal value for a specific product or stage'), use only that filter — do not also add closed_won unless the question asks for it."
   },
   {
     "term": "sales cycle length",

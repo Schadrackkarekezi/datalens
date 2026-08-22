@@ -3,8 +3,8 @@ The agent behind POST /ask.
 
 This is a multi-step pipeline, not a single LLM call:
 
-  retrieve (RAG) -> graph lookup -> respond, where "respond" is one of two
-  modes the model itself chooses per turn:
+  verified-match check -> retrieve (RAG) -> graph lookup -> respond, where
+  "respond" is one of two modes the model itself chooses per turn:
 
     - "sql":  the question asks for data. Generate a query, execute it,
               and on failure retry with the error fed back to the model
@@ -22,6 +22,11 @@ that surfaced in the UI as a red failure banner, which was wrong — the
 agent hadn't failed, it had correctly declined to invent a query.
 AgentError is now reserved for genuine failures: SQL that keeps erroring
 out after every retry.
+
+Before any of that, run_ask() checks verified_queries.py for a close
+semantic match to a pre-vetted question — if found, it skips generation
+entirely and executes the verified SQL directly, at $0 cost and
+millisecond latency instead of a real LLM round trip.
 
 Each step is timed and recorded in `trace`, so the same data that answers
 the question also documents exactly what the agent did to get there —
@@ -41,6 +46,7 @@ from database import get_connection, fetch_schema
 from knowledge_graph import find_relevant_entities, find_join_paths
 from query_engine import run_select, QueryError
 from rag import retrieve
+from verified_queries import find_verified_match
 
 load_dotenv()
 
@@ -122,6 +128,40 @@ def run_ask(question: str, history: list = None):
     trace = []
     total_prompt_tokens = 0
     total_completion_tokens = 0
+
+    # Verified answers are context-free canned SQL — only safe to use on a
+    # fresh question. Mid-conversation, the same words can mean something
+    # scoped by prior turns ("what about win rate" after discussing one
+    # department), and skipping straight to a verified generic answer
+    # would silently ignore that context.
+    t_verify = time.perf_counter()
+    match = find_verified_match(question) if not history else None
+    if match:
+        columns, rows, exec_latency, truncated = run_select(match["sql"])
+        trace.append({
+            "step": "verified_match",
+            "latency_ms": round((time.perf_counter() - t_verify) * 1000, 2),
+            "execute_latency_ms": exec_latency,
+            "matched_question": match["question"],
+            "similarity": round(match["score"], 4),
+        })
+        return {
+            "response_type": "sql",
+            "question": question,
+            "message": None,
+            "generated_sql": match["sql"],
+            "columns": columns,
+            "rows": rows,
+            "row_count": len(rows),
+            "truncated": truncated,
+            "attempts": 1,
+            "verified": True,
+            "retrieved_context": [],
+            "trace": trace,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "estimated_cost_usd": 0.0,
+        }
 
     t0 = time.perf_counter()
     context = retrieve(question, top_k=3)
@@ -208,6 +248,7 @@ Relevant business term definitions:
                 "row_count": 0,
                 "truncated": False,
                 "attempts": attempt,
+                "verified": False,
                 "retrieved_context": context,
                 "trace": trace,
                 "prompt_tokens": total_prompt_tokens,
@@ -261,6 +302,7 @@ Relevant business term definitions:
             "row_count": len(rows),
             "truncated": truncated,
             "attempts": attempt,
+            "verified": False,
             "retrieved_context": context,
             "trace": trace,
             "prompt_tokens": total_prompt_tokens,

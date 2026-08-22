@@ -28,6 +28,7 @@ def log_ask(
         "total_latency_ms": round(total_latency_ms, 2),
         "response_type": result["response_type"] if result else None,
         "generated_sql": result["generated_sql"] if result else None,
+        "verified": result.get("verified") if result else None,
         "attempts": result["attempts"] if result else None,
         "row_count": result["row_count"] if result else None,
         "retrieved_terms": [c["term"] for c in result["retrieved_context"]] if result else [],

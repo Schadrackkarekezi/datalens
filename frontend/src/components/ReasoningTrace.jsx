@@ -1,10 +1,15 @@
 const STEP_META = {
+  verified_match: { icon: "✓", label: "Verified match" },
   retrieve: { icon: "📚", label: "Retrieved business context" },
   graph_lookup: { icon: "🕸️", label: "Graph lookup" },
   respond: { icon: "⚙️", label: "Generate response" },
 };
 
 function describeStep(step) {
+  if (step.step === "verified_match") {
+    return `matched "${step.matched_question}" (${(step.similarity * 100).toFixed(1)}% similarity) — skipped generation entirely`;
+  }
+
   if (step.step === "retrieve") {
     const terms = step.retrieved_terms || [];
     const history = step.history_turns_used || 0;

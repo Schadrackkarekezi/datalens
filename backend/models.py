@@ -57,6 +57,7 @@ class AskResponse(BaseModel):
     row_count: int
     truncated: bool
     attempts: int
+    verified: bool
     retrieved_context: list[GlossaryHit]
     trace: list[dict[str, Any]]
     prompt_tokens: int
@@ -72,6 +73,7 @@ class LogEntry(BaseModel):
     total_latency_ms: float
     response_type: Optional[str] = None
     generated_sql: Optional[str] = None
+    verified: Optional[bool] = None
     attempts: Optional[int] = None
     row_count: Optional[int] = None
     retrieved_terms: list[str] = []

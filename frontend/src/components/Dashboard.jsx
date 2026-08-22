@@ -24,6 +24,9 @@ export default function Dashboard({ active }) {
   );
   const maxLatency = Math.max(...entries.map((e) => e.total_latency_ms));
   const totalCost = entries.reduce((sum, e) => sum + (e.estimated_cost_usd || 0), 0);
+  const sqlEntries = entries.filter((e) => e.response_type === "sql");
+  const verifiedCount = sqlEntries.filter((e) => e.verified).length;
+  const verifiedRate = sqlEntries.length > 0 ? Math.round((verifiedCount / sqlEntries.length) * 100) : null;
 
   return (
     <div className="dashboard">
@@ -44,6 +47,12 @@ export default function Dashboard({ active }) {
           <div className="stat-value">${totalCost.toFixed(4)}</div>
           <div className="stat-label">Est. total cost</div>
         </div>
+        {verifiedRate !== null && (
+          <div className="stat-tile">
+            <div className="stat-value">{verifiedRate}%</div>
+            <div className="stat-label">Verified hit rate ({verifiedCount}/{sqlEntries.length})</div>
+          </div>
+        )}
       </div>
 
       <div className="latency-chart">
@@ -67,6 +76,7 @@ export default function Dashboard({ active }) {
               <th>Time</th>
               <th>Question</th>
               <th>Status</th>
+              <th>Source</th>
               <th>Attempts</th>
               <th>Rows</th>
               <th>Latency</th>
@@ -82,6 +92,15 @@ export default function Dashboard({ active }) {
                   <span className={`status-pill ${e.success ? "ok" : "fail"}`}>
                     {e.success ? "success" : "failed"}
                   </span>
+                </td>
+                <td>
+                  {e.response_type === "sql" ? (
+                    <span className={`verified-badge ${e.verified ? "verified" : "generated"}`}>
+                      {e.verified ? "✓ verified" : "⚡ generated"}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </td>
                 <td>{e.attempts ?? "—"}</td>
                 <td>{e.row_count ?? "—"}</td>
