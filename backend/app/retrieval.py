@@ -21,29 +21,14 @@ depends on; filtering after retrieval would only be a UI-layer illusion
 of isolation, not a real one.
 """
 
-import os
-
 import psycopg
 from dotenv import load_dotenv
 from pgvector.psycopg import register_vector
-from sentence_transformers import SentenceTransformer
+
+from app.database import READONLY_DATABASE_URL
+from app.embedding import _get_model
 
 load_dotenv()
-
-READONLY_DATABASE_URL = os.environ.get(
-    "DATABASE_URL_READONLY",
-    "postgresql://datalens_readonly:datalens_readonly_dev_only@localhost:5432/datalens",
-)
-MODEL_NAME = "all-MiniLM-L6-v2"
-
-_model = None
-
-
-def _get_model():
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(MODEL_NAME)
-    return _model
 
 
 def retrieve_unstructured(question: str, account_id=None, top_k: int = 3) -> list:
@@ -66,33 +51,27 @@ def retrieve_unstructured(question: str, account_id=None, top_k: int = 3) -> lis
 
     query_vec = _get_model().encode(question, normalize_embeddings=True)
 
+    if account_ids is not None:
+        scope_clause = "(account_id = ANY(%s) OR account_id IS NULL)"
+        scope_params = (account_ids,)
+    else:
+        scope_clause = "account_id IS NULL"
+        scope_params = ()
+
     with psycopg.connect(READONLY_DATABASE_URL) as conn:
         register_vector(conn)
         with conn.cursor() as cur:
-            if account_ids is not None:
-                cur.execute(
-                    """
-                    SELECT chunk_id, source_type, source_id, account_id, chunk_text,
-                           1 - (embedding <=> %s) AS score
-                    FROM document_chunks
-                    WHERE embedding IS NOT NULL AND (account_id = ANY(%s) OR account_id IS NULL)
-                    ORDER BY embedding <=> %s
-                    LIMIT %s
-                    """,
-                    (query_vec, account_ids, query_vec, top_k),
-                )
-            else:
-                cur.execute(
-                    """
-                    SELECT chunk_id, source_type, source_id, account_id, chunk_text,
-                           1 - (embedding <=> %s) AS score
-                    FROM document_chunks
-                    WHERE embedding IS NOT NULL AND account_id IS NULL
-                    ORDER BY embedding <=> %s
-                    LIMIT %s
-                    """,
-                    (query_vec, query_vec, top_k),
-                )
+            cur.execute(
+                f"""
+                SELECT chunk_id, source_type, source_id, account_id, chunk_text,
+                       1 - (embedding <=> %s) AS score
+                FROM document_chunks
+                WHERE embedding IS NOT NULL AND {scope_clause}
+                ORDER BY embedding <=> %s
+                LIMIT %s
+                """,
+                (query_vec, *scope_params, query_vec, top_k),
+            )
             rows = cur.fetchall()
 
     return [

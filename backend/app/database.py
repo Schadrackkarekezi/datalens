@@ -18,6 +18,15 @@ DATABASE_URL = os.environ.get(
     "DATABASE_URL", "postgresql://datalens:datalens_dev_only@localhost:5432/datalens"
 )
 
+# The read-only role's connection string - query_engine.py, retrieval.py,
+# and verified_queries.py all connect as this same least-privilege role
+# for their SELECT-only workloads, so it's defined once here rather than
+# copy-pasted three times.
+READONLY_DATABASE_URL = os.environ.get(
+    "DATABASE_URL_READONLY",
+    "postgresql://datalens_readonly:datalens_readonly_dev_only@localhost:5432/datalens",
+)
+
 
 @contextmanager
 def get_connection():

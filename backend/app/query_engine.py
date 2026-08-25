@@ -31,12 +31,9 @@ import time
 import psycopg
 from dotenv import load_dotenv
 
-load_dotenv()
+from app.database import READONLY_DATABASE_URL
 
-READONLY_DATABASE_URL = os.environ.get(
-    "DATABASE_URL_READONLY",
-    "postgresql://datalens_readonly:datalens_readonly_dev_only@localhost:5432/datalens",
-)
+load_dotenv()
 
 MAX_ROWS = int(os.environ.get("QUERY_MAX_ROWS", 500))
 TIMEOUT_SECONDS = float(os.environ.get("QUERY_TIMEOUT_SECONDS", 5))

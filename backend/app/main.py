@@ -131,6 +131,26 @@ def upload_enablement_content(request: UploadEnablementRequest):
     return UploadResponse(**result)
 
 
+def _openai_error_detail(exc: openai.OpenAIError) -> tuple[int, str]:
+    """
+    Maps an OpenAI SDK exception to (status_code, detail) - shared by /ask
+    (raises HTTPException with the status code) and /ask/stream (only
+    needs the detail text, for its "error" SSE event, since a streaming
+    body can't change HTTP status after it's already started), so the
+    same branches and message strings aren't kept in sync by hand across
+    two call sites. AuthenticationError, RateLimitError, and
+    APIStatusError are all subclasses of OpenAIError, so isinstance
+    checks here do the same dispatch four separate except clauses used to.
+    """
+    if isinstance(exc, openai.AuthenticationError):
+        return 500, "OPENAI_API_KEY is missing or invalid - set it in backend/.env"
+    if isinstance(exc, openai.RateLimitError):
+        return 429, "OpenAI API rate limit hit - try again shortly"
+    if isinstance(exc, openai.APIStatusError):
+        return 502, f"OpenAI API error: {exc.message}"
+    return 500, f"OPENAI_API_KEY is missing or invalid - set it in backend/.env ({exc})"
+
+
 @app.post(
     "/ask",
     response_model=AskResponse,
@@ -158,22 +178,10 @@ def ask(request: AskRequest):
             estimated_cost_usd=cost,
         )
         raise HTTPException(status_code=422, detail=str(e), headers={"X-Request-Id": request_id})
-    except openai.AuthenticationError:
-        detail = "OPENAI_API_KEY is missing or invalid - set it in backend/.env"
-        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
-        raise HTTPException(status_code=500, detail=detail, headers={"X-Request-Id": request_id})
-    except openai.RateLimitError:
-        detail = "OpenAI API rate limit hit - try again shortly"
-        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
-        raise HTTPException(status_code=429, detail=detail, headers={"X-Request-Id": request_id})
-    except openai.APIStatusError as e:
-        detail = f"OpenAI API error: {e.message}"
-        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
-        raise HTTPException(status_code=502, detail=detail, headers={"X-Request-Id": request_id})
     except openai.OpenAIError as e:
-        detail = f"OPENAI_API_KEY is missing or invalid - set it in backend/.env ({e})"
+        status_code, detail = _openai_error_detail(e)
         log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
-        raise HTTPException(status_code=500, detail=detail, headers={"X-Request-Id": request_id})
+        raise HTTPException(status_code=status_code, detail=detail, headers={"X-Request-Id": request_id})
 
     add_turn(conversation_id, question=request.question, result=result)
     log_ask(request.question, (time.perf_counter() - start) * 1000, success=True, request_id=request_id, result=result)
@@ -231,20 +239,8 @@ def ask_stream(request: AskRequest):
                 estimated_cost_usd=cost,
             )
             yield _sse({"type": "error", "message": str(e), "request_id": request_id})
-        except openai.AuthenticationError:
-            detail = "OPENAI_API_KEY is missing or invalid - set it in backend/.env"
-            log_failure(detail)
-            yield _sse({"type": "error", "message": detail, "request_id": request_id})
-        except openai.RateLimitError:
-            detail = "OpenAI API rate limit hit - try again shortly"
-            log_failure(detail)
-            yield _sse({"type": "error", "message": detail, "request_id": request_id})
-        except openai.APIStatusError as e:
-            detail = f"OpenAI API error: {e.message}"
-            log_failure(detail)
-            yield _sse({"type": "error", "message": detail, "request_id": request_id})
         except openai.OpenAIError as e:
-            detail = f"OPENAI_API_KEY is missing or invalid - set it in backend/.env ({e})"
+            _, detail = _openai_error_detail(e)
             log_failure(detail)
             yield _sse({"type": "error", "message": detail, "request_id": request_id})
 

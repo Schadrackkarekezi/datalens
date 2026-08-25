@@ -38,23 +38,31 @@ def get_history(conversation_id: str) -> list:
     return [row[0] for row in reversed(rows)]
 
 
-def add_turn(conversation_id: str, question: str, result: dict):
+def build_turn(question: str, result: dict) -> dict:
+    """
+    Shared by add_turn below and scripts/run_eval.py's multi-turn suite -
+    both need to build the exact same history-turn shape from an /ask
+    result (one, to actually persist; the other, to feed accumulating
+    history into run_ask() the same way a real conversation would), so
+    there's exactly one place this shape is defined instead of two that
+    could quietly drift apart on what a "turn" looks like.
+    """
     response_type = result["response_type"]
 
     if response_type == "sql":
-        turn = {
+        return {
             "type": "sql",
             "question": question,
             "sql": result["generated_sql"],
             "row_count": result["row_count"],
             "columns": result["columns"],
         }
-    elif response_type == "hybrid":
+    if response_type == "hybrid":
         # Keeps both halves - a follow-up like "now break that down by
         # workload" needs the SQL shape to resolve "that" correctly, but
         # collapsing to a chat-shaped turn (question + message only, the
         # non-sql branch below) would lose it and only remember the prose.
-        turn = {
+        return {
             "type": "hybrid",
             "question": question,
             "sql": result["generated_sql"],
@@ -62,12 +70,15 @@ def add_turn(conversation_id: str, question: str, result: dict):
             "columns": result["columns"],
             "message": result["message"],
         }
-    else:
-        turn = {
-            "type": "chat",
-            "question": question,
-            "message": result["message"],
-        }
+    return {
+        "type": "chat",
+        "question": question,
+        "message": result["message"],
+    }
+
+
+def add_turn(conversation_id: str, question: str, result: dict):
+    turn = build_turn(question, result)
 
     with get_connection() as conn:
         with conn.cursor() as cur:

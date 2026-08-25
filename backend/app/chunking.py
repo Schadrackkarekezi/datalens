@@ -22,3 +22,20 @@ def chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVE
             break
         start = end - overlap
     return chunks
+
+
+def chunk_and_insert(cur, source_type: str, source_id: int, account_id, text: str) -> int:
+    """
+    Chunks text and inserts every chunk into document_chunks in one
+    executemany - the same two steps both seed_unstructured.py (bulk
+    authoring) and app/upload.py (one document at a time via POST /upload)
+    need, so this is the one place that pairing lives.
+    """
+    chunks = chunk_text(text)
+    rows = [(source_type, source_id, account_id, i, chunk) for i, chunk in enumerate(chunks)]
+    cur.executemany(
+        """INSERT INTO document_chunks (source_type, source_id, account_id, chunk_index, chunk_text)
+           VALUES (%s, %s, %s, %s, %s)""",
+        rows,
+    )
+    return len(chunks)

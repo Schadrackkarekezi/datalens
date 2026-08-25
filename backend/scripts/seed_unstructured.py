@@ -22,7 +22,7 @@ generation logic ever changes) and truncate-and-reinsert, like seed_db.py.
 import random
 from datetime import date
 
-from app.chunking import chunk_text
+from app.chunking import chunk_and_insert
 from app.database import get_connection
 
 random.seed(43)
@@ -345,18 +345,9 @@ def seed_enablement_content(cur) -> list:
 
 
 # ---------------------------------------------------------------------
-# Chunking pass - both sources feed the same document_chunks table
+# Chunking pass - both sources feed the same document_chunks table,
+# via the same chunk_and_insert app/upload.py uses for live uploads.
 # ---------------------------------------------------------------------
-
-def chunk_and_insert(cur, source_type: str, source_id: int, account_id, text: str) -> int:
-    chunks = chunk_text(text)
-    rows = [(source_type, source_id, account_id, i, chunk) for i, chunk in enumerate(chunks)]
-    cur.executemany(
-        """INSERT INTO document_chunks (source_type, source_id, account_id, chunk_index, chunk_text)
-           VALUES (%s, %s, %s, %s, %s)""",
-        rows,
-    )
-    return len(chunks)
 
 
 def main():

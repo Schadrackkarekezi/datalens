@@ -53,6 +53,7 @@ import json
 import time
 
 from app.agent import run_ask, AgentError
+from app.conversations import build_turn
 from app.judge import judge_sql_answer, judge_hybrid_faithfulness
 from app.retrieval import retrieve_unstructured
 
@@ -66,28 +67,6 @@ RESULTS_PATH = "eval_results.json"
 # calls costing ~$0.0085) with real headroom, not picked arbitrarily.
 BUDGET_MAX_AVG_LATENCY_MS = 5000
 BUDGET_MAX_AVG_COST_USD = 0.02
-
-
-def _history_turn(question: str, result: dict) -> dict:
-    response_type = result["response_type"]
-    if response_type == "sql":
-        return {
-            "type": "sql",
-            "question": question,
-            "sql": result["generated_sql"],
-            "row_count": result["row_count"],
-            "columns": result["columns"],
-        }
-    if response_type == "hybrid":
-        return {
-            "type": "hybrid",
-            "question": question,
-            "sql": result["generated_sql"],
-            "row_count": result["row_count"],
-            "columns": result["columns"],
-            "message": result["message"],
-        }
-    return {"type": "chat", "question": question, "message": result["message"]}
 
 
 def check_sql_case(case: dict, result: dict, history: list = None) -> tuple[bool, str]:
@@ -179,7 +158,7 @@ def run_conversation_case(scenario: dict) -> dict:
 
         latency_ms = round((time.perf_counter() - start) * 1000, 2)
         history_before_this_turn = list(history)  # same context the agent itself saw
-        history.append(_history_turn(turn["question"], result))
+        history.append(build_turn(turn["question"], result))
 
         if turn.get("expect_chat"):
             passed = result["response_type"] == "chat"

@@ -15,7 +15,7 @@ in-between state where a chunk could end up ambiguously scoped.
 
 from datetime import date
 
-from app.chunking import chunk_text
+from app.chunking import chunk_and_insert
 from app.database import get_connection, DATABASE_URL
 from app.embedding import embed_pending_chunks
 
@@ -33,17 +33,6 @@ def _require_account(conn, account_id: int) -> None:
             raise UploadError(f"No account with account_id={account_id} - check the ID and try again.")
 
 
-def _insert_chunks(cur, source_type: str, source_id: int, account_id, content: str) -> int:
-    chunks = chunk_text(content)
-    rows = [(source_type, source_id, account_id, i, c) for i, c in enumerate(chunks)]
-    cur.executemany(
-        """INSERT INTO document_chunks (source_type, source_id, account_id, chunk_index, chunk_text)
-           VALUES (%s, %s, %s, %s, %s)""",
-        rows,
-    )
-    return len(chunks)
-
-
 def upload_account_note(account_id: int, content: str, author_role: str) -> dict:
     if not content.strip():
         raise UploadError("Note content can't be empty.")
@@ -58,7 +47,7 @@ def upload_account_note(account_id: int, content: str, author_role: str) -> dict
                     (account_id, author_role, date.today(), content.strip()),
                 )
                 note_id = cur.fetchone()[0]
-                chunks_created = _insert_chunks(cur, "account_note", note_id, account_id, content.strip())
+                chunks_created = chunk_and_insert(cur, "account_note", note_id, account_id, content.strip())
             conn.commit()
     except psycopg.Error as e:
         raise UploadError(str(e).strip()) from e
@@ -82,7 +71,7 @@ def upload_enablement_content(title: str, category: str, content: str) -> dict:
                     (title.strip(), category, content.strip()),
                 )
                 content_id = cur.fetchone()[0]
-                chunks_created = _insert_chunks(cur, "enablement_content", content_id, None, content.strip())
+                chunks_created = chunk_and_insert(cur, "enablement_content", content_id, None, content.strip())
             conn.commit()
     except psycopg.Error as e:
         raise UploadError(str(e).strip()) from e

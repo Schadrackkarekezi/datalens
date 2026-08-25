@@ -3,6 +3,12 @@ Embeds every document_chunks row still missing an embedding - shared by
 embed_content.py (the bulk backfill script) and the live /upload endpoint,
 which calls this right after inserting new chunks so they're retrievable
 immediately instead of waiting for a separate batch job to notice them.
+
+_get_model() is also the one place the SentenceTransformer singleton is
+loaded - retrieval.py and verified_queries.py both import it from here
+rather than each keeping their own copy of the same lazy-load, so the
+model is loaded once per process no matter how many of the three modules
+end up used.
 """
 
 import psycopg

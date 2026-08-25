@@ -28,30 +28,16 @@ DEPARTMENT" - still scores 0.80, since embedding models cluster on
 topic, not exact scope. MATCH_THRESHOLD is set well above that gap.
 """
 
-import os
-
 import psycopg
 from dotenv import load_dotenv
 from pgvector.psycopg import register_vector
-from sentence_transformers import SentenceTransformer
+
+from app.database import READONLY_DATABASE_URL
+from app.embedding import _get_model
 
 load_dotenv()
 
-READONLY_DATABASE_URL = os.environ.get(
-    "DATABASE_URL_READONLY",
-    "postgresql://datalens_readonly:datalens_readonly_dev_only@localhost:5432/datalens",
-)
-MODEL_NAME = "all-MiniLM-L6-v2"
 MATCH_THRESHOLD = 0.92
-
-_model = None
-
-
-def _get_model():
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(MODEL_NAME)
-    return _model
 
 
 def find_verified_match(question: str):
