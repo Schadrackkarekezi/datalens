@@ -1,9 +1,10 @@
 import SchemaBrowser from "./SchemaBrowser";
 import ThemeToggle from "./ThemeToggle";
-import { HomeIcon, TerminalIcon, GraphIcon, ChartIcon, DatabaseIcon, UploadIcon } from "./Icons";
+import { HomeIcon, ChatIcon, TerminalIcon, GraphIcon, ChartIcon, DatabaseIcon, UploadIcon } from "./Icons";
 
 const NAV_ITEMS = [
   { id: "home", label: "Home", Icon: HomeIcon },
+  { id: "ask", label: "Ask AI", Icon: ChatIcon },
   { id: "catalog", label: "Data Catalog", Icon: DatabaseIcon },
   { id: "upload", label: "Upload", Icon: UploadIcon },
   { id: "query", label: "Query Editor", Icon: TerminalIcon },
@@ -36,10 +37,7 @@ export default function Sidebar({ mode, onModeChange, onPickTable, activeTable, 
 
         <nav className="sidebar-nav">
           {NAV_ITEMS.map(({ id, label, Icon }) => {
-            // "ask" has no nav entry of its own - it's only ever reached from
-            // Home's ask box - so while a conversation is active, Home is
-            // still the nav item that reads as "where you are."
-            const isActive = mode === id || (id === "home" && mode === "ask");
+            const isActive = mode === id;
             return (
               <button
                 key={id}

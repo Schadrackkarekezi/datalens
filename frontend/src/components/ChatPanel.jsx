@@ -413,7 +413,7 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
       </div>
 
       <div className="chat-history">
-        {history.length === 0 && (
+        {history.length === 0 && !loading && (
           <div className="chat-empty">
             <AgentAvatar />
             <p>Ask a question about your data - or try one of these:</p>
