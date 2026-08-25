@@ -1,6 +1,8 @@
 # Traceview
 
-A GTM data assistant that answers plain-English questions with real SQL, retrieved account context, or both fused into one answer - not just a chatbot wrapper around a database. Read-only enforced at the database privilege level, evaluated by an independent LLM judge, and fully synthetic data (a fictional SaaS business, not modeled on or affiliated with any real company).
+A GTM data assistant that answers plain-English questions with real SQL, retrieved account context, or both fused into one answer - not just a chatbot wrapper around a database. Read-only enforced at the database privilege level, evaluated by an independent LLM judge, built on GTM data for a fictional SaaS business.
+
+**Live demo:** [traceviewfrontend-production.up.railway.app](https://traceviewfrontend-production.up.railway.app)
 
 ![CI](https://github.com/Schadrackkarekezi/traceview/actions/workflows/ci.yml/badge.svg)
 
@@ -14,6 +16,18 @@ Each question gets routed to one of four modes:
 - **`chat`** - everything else, including an honest "I can't answer that" instead of a guessed number.
 
 Every step is timed and shown in a reasoning trace under each answer. Home also surfaces a proactive panel on load - accounts trending under target before they're formally flagged at-risk - instead of waiting to be asked. There's also a raw SQL editor with the same safety guarantees, a knowledge graph viewer, and an observability dashboard with full cost/latency/trace detail per call.
+
+## Agent capabilities
+
+Behind every answer is a set of capabilities the agent draws on, not just one model call:
+
+- **RAG (retrieval-augmented generation)** - before writing an `unstructured` or `hybrid` answer, the agent searches account notes and sales-enablement content via vector similarity search (pgvector) and grounds its reply in whatever it actually finds, instead of guessing from general knowledge. The same retrieval mechanism grounds SQL generation too, pulling the exact business-term definitions ("win rate," "active deal") relevant to a question so the model uses your definitions, not an inferred one.
+- **SQL generation and execution** - writes a Postgres query for the question, runs it through a read-only database role with a row cap and timeout, and retries automatically (up to 3x) if the query errors, feeding the error back to the model to fix it.
+- **Verified-query cache** - questions matching one already vetted by the eval suite skip generation entirely and run pre-approved SQL directly, at $0 cost and millisecond latency.
+- **Knowledge graph lookup** - computes the real join path between tables from the schema's actual foreign keys before SQL gets written, so multi-table questions don't rely on the model guessing how tables connect.
+- **Conversation memory** - follow-up questions ("now break that down by industry") resolve against the actual conversation history, not from scratch each time.
+
+Every step above is timed and logged, and shown in the reasoning trace under each answer.
 
 ## Architecture
 
@@ -65,7 +79,7 @@ Pipeline per `/ask` call: verified-match check → retrieve business context (RA
 | LLM | OpenAI (`gpt-4o` generation, `gpt-4o-mini` judge) | Cheaper model for a narrower verification task |
 | Streaming | Server-Sent Events | Only the free-text writing step streams - structured routing output can't stream meaningfully |
 | Frontend | React + Vite + CodeMirror | Real SQL syntax highlighting, fast dev loop |
-| Tests | pytest (35 tests) | The actual security and isolation boundaries, not incidental coverage |
+| Tests | pytest (42 tests) | The actual security and isolation boundaries, not incidental coverage |
 | CI | GitHub Actions | pytest + frontend build on every push; eval suite on manual trigger |
 
 ## Running it locally
