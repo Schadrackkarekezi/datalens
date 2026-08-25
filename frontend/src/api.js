@@ -31,24 +31,12 @@ export async function runQuery(sql) {
   return data;
 }
 
-export async function askQuestion(question, conversationId) {
-  const res = await fetch(`${BASE_URL}/ask`, {
-    method: "POST",
-    headers: headers({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ question, conversation_id: conversationId }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || `Ask failed (${res.status})`);
-  return data;
-}
-
-// SSE version of askQuestion — only "unstructured"/"hybrid" answers ever
-// send "start"/"delta" events (that's the one call in the pipeline that
-// writes free-form prose instead of strict JSON, so it's the only one
-// that can stream meaningfully); "sql"/"chat" turns go straight to
-// onComplete, same as the non-streaming endpoint. A backend "error" event
-// is thrown here rather than passed to a callback, so callers can handle
-// it with the same try/catch they'd use for a network failure.
+// Only "unstructured"/"hybrid" answers ever send "start"/"delta" events
+// (that's the one call in the pipeline that writes free-form prose instead
+// of strict JSON, so it's the only one that can stream meaningfully);
+// "sql"/"chat" turns go straight to onComplete. A backend "error" event is
+// thrown here rather than passed to a callback, so callers can handle it
+// with the same try/catch they'd use for a network failure.
 export async function askQuestionStream(question, conversationId, { onStart, onDelta, onSynthError, onComplete }) {
   const res = await fetch(`${BASE_URL}/ask/stream`, {
     method: "POST",

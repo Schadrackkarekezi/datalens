@@ -3,7 +3,7 @@ CLI wrapper for the bulk backfill case — the actual logic lives in
 embedding.py so the live /upload endpoint can call the same function
 instead of duplicating it.
 
-Usage: python embed_content.py
+Usage: python -m scripts.embed_content   (run from backend/)
 """
 
 from app.database import DATABASE_URL

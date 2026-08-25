@@ -112,4 +112,4 @@ docker compose up --build
 
 ## Project history
 
-Built incrementally with Claude Code as a pairing partner — see `PROJECT_PLAN.md` for how the plan evolved along the way.
+Built incrementally with Claude Code as a pairing partner.

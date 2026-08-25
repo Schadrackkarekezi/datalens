@@ -46,7 +46,7 @@ picked arbitrarily (see BUDGET_* below).
 AgentError (retries exhausted on genuinely broken SQL) always counts as a
 failure — that's a real bug, not a valid outcome for any eval case.
 
-Usage: python run_eval.py
+Usage: python -m scripts.run_eval   (run from backend/)
 """
 
 import json

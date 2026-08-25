@@ -1167,10 +1167,6 @@ tbody tr:hover {
   color: var(--amber);
 }
 
-.trace-fail .trace-label {
-  color: var(--red);
-}
-
 .chat-reply {
   font-size: 14px;
   line-height: 1.6;

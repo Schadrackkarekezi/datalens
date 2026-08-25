@@ -8,7 +8,7 @@ place find_verified_match() actually reads from.
 Truncate-and-reinsert, like seed_db.py and seed_unstructured.py — safe to
 re-run any time verified_queries.json changes.
 
-Usage: python seed_verified_queries.py
+Usage: python -m scripts.seed_verified_queries   (run from backend/)
 """
 
 import json
