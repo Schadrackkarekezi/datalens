@@ -34,7 +34,7 @@ from app.models import (
     LogsResponse,
 )
 
-app = FastAPI(title="DataLens API")
+app = FastAPI(title="Traceview API")
 
 app.add_middleware(
     CORSMiddleware,

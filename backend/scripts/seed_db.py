@@ -1,5 +1,5 @@
 """
-Seeds the DataLens Postgres database with synthetic, GTM-authentic data —
+Seeds the Traceview Postgres database with synthetic, GTM-authentic data —
 consumption-based, not seat-based: workload adoption, capacity contracts,
 credit-consumption trends, modeled after how any usage-based data
 platform business works generically, not any one real company.

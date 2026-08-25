@@ -1,4 +1,4 @@
--- DataLens schema: consumption-based GTM data model, dimension/fact split.
+-- Traceview schema: consumption-based GTM data model, dimension/fact split.
 --
 -- Run automatically by docker-compose on first `db` container creation
 -- (mounted into /docker-entrypoint-initdb.d) — the fast path for a brand

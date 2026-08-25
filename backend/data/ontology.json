@@ -3,7 +3,7 @@
     {
       "table": "accounts",
       "kind": "dimension",
-      "description": "A company DataLens sells to — segmented by size tier and industry.",
+      "description": "A company Traceview sells to — segmented by size tier and industry.",
       "aliases": ["account", "accounts", "customer", "customers", "client", "clients", "company"]
     },
     {

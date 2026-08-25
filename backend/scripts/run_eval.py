@@ -311,7 +311,7 @@ def main():
     faithful_count = sum(r["faithful"] for r in faithfulness_checked)
 
     print(f"\n{'=' * 60}")
-    print(f"DataLens Agent Eval — {passed}/{total} single-turn passed ({accuracy}%)")
+    print(f"Traceview Agent Eval — {passed}/{total} single-turn passed ({accuracy}%)")
     print(f"Conversations — {convo_passed}/{convo_total} passed")
     print(f"Retrieval hit-rate — {retrieval_raw_hits}/{retrieval_total} raw "
           f"({retrieval_hits}/{retrieval_total} counting documented known limitations)")

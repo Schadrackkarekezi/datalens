@@ -148,7 +148,7 @@ export default function Home({ onAsk }) {
   return (
     <div className="home-view">
       <div className="home-hero">
-        <h1>{greeting()}. I'm DataLens, your GTM AI assistant.</h1>
+        <h1>{greeting()}. I'm Traceview, your GTM AI assistant.</h1>
         <p>
           Ask about any account, deal, or contract — I'll pull the real numbers and the story
           behind them, so you know not just what's happening, but why.

@@ -15,9 +15,9 @@ export default function Sidebar({ mode, onModeChange, onPickTable, activeTable, 
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <span className="logo-mark">D</span>
+        <span className="logo-mark">T</span>
         <div className="sidebar-brand-text">
-          <span className="brand-name">DataLens</span>
+          <span className="brand-name">Traceview</span>
           <span className="brand-sub">GTM Intelligence</span>
         </div>
       </div>

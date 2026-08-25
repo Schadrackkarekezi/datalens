@@ -1,5 +1,5 @@
 """
-Seeds the unstructured side of DataLens: account_notes (account-scoped CS/
+Seeds the unstructured side of Traceview: account_notes (account-scoped CS/
 sales free text) and enablement_content (global battlecards/plays/FAQs),
 both chunked into document_chunks — the table Phase 08's pgvector
 retrieval actually searches over. Embeddings are left NULL here; that's
