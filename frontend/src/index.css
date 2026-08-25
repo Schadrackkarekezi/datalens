@@ -2152,6 +2152,86 @@ tbody tr:hover {
   color: var(--text-dim);
 }
 
+.home-attention-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.home-attention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-attention-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.home-attention-card:hover {
+  border-color: var(--border-light);
+  background: var(--panel-raised);
+  transform: translateY(-1px);
+}
+
+.home-attention-card:hover .home-link-arrow {
+  transform: translateX(3px);
+  color: var(--accent);
+}
+
+.home-attention-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-attention-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 3px;
+}
+
+.home-attention-head strong {
+  font-size: 14px;
+}
+
+.home-attention-pct {
+  margin-left: auto;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-attention-meta {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-bottom: 6px;
+}
+
+.home-attention-note {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 .home-links {
   display: grid;
   grid-template-columns: 1fr 1fr;

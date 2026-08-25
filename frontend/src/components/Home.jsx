@@ -11,6 +11,34 @@ import {
   GraphIcon,
 } from "./Icons";
 
+// The proactive half of the app — surfaced the moment Home loads, not
+// only when someone thinks to ask. Ranks by how far under target an
+// account is trending, and deliberately includes accounts still labeled
+// "active": capacity_contracts.status is a lagging, manually-set label
+// (see the "under-consumption" glossary definition), so scanning only
+// for accounts already marked at_risk misses exactly the accounts this
+// is supposed to catch early. account_notes.content is fetched inline
+// (a plain correlated subquery, not a semantic search) since we already
+// know the account — there's nothing to search for, just the latest
+// note to show as the "why."
+const ATTENTION_QUERY = `
+SELECT a.account_id, a.name, a.industry, w.name AS workload, cc.status,
+       ROUND(AVG(cu.credits_consumed) / (cc.committed_amount / 12) * 100) AS pct_of_target,
+       (SELECT content FROM account_notes an
+        WHERE an.account_id = a.account_id
+        ORDER BY note_date DESC LIMIT 1) AS latest_note
+FROM capacity_contracts cc
+JOIN accounts a ON a.account_id = cc.account_id
+JOIN workloads w ON w.workload_id = cc.workload_id
+JOIN consumption_usage cu ON cu.account_id = cc.account_id AND cu.workload_id = cc.workload_id
+WHERE cc.status IN ('active', 'at_risk')
+  AND cu.usage_month >= (SELECT MAX(usage_month) FROM consumption_usage) - INTERVAL '2 months'
+GROUP BY a.account_id, a.name, a.industry, w.name, cc.status, cc.committed_amount
+HAVING AVG(cu.credits_consumed) < (cc.committed_amount / 12) * 0.7
+ORDER BY pct_of_target ASC
+LIMIT 6
+`.trim();
+
 const SUGGESTIONS = [
   "Which accounts have capacity contracts marked at_risk?",
   "Which reps logged the most POCs on deals for the Data Sharing workload?",
@@ -70,6 +98,8 @@ export default function Home({ onAsk }) {
   const [question, setQuestion] = useState("");
   const [snapshot, setSnapshot] = useState(null);
   const [snapshotError, setSnapshotError] = useState(null);
+  const [attention, setAttention] = useState(null);
+  const [attentionError, setAttentionError] = useState(null);
 
   useEffect(() => {
     Promise.all(SNAPSHOT_QUERIES.map((q) => runQuery(q.sql)))
@@ -83,6 +113,23 @@ export default function Home({ onAsk }) {
         );
       })
       .catch((err) => setSnapshotError(err.message));
+
+    runQuery(ATTENTION_QUERY)
+      .then((result) => {
+        const idx = Object.fromEntries(result.columns.map((c, i) => [c, i]));
+        setAttention(
+          result.rows.map((row) => ({
+            accountId: row[idx.account_id],
+            name: row[idx.name],
+            industry: row[idx.industry],
+            workload: row[idx.workload],
+            status: row[idx.status],
+            pct: row[idx.pct_of_target],
+            note: row[idx.latest_note],
+          }))
+        );
+      })
+      .catch((err) => setAttentionError(err.message));
   }, []);
 
   const submit = () => {
@@ -101,10 +148,10 @@ export default function Home({ onAsk }) {
   return (
     <div className="home-view">
       <div className="home-hero">
-        <h1>{greeting()}. What do you want to know about your GTM data?</h1>
+        <h1>{greeting()}. I'm DataLens, your GTM AI assistant.</h1>
         <p>
-          Ask in plain English — deals, capacity contracts, consumption trends, POCs. DataLens
-          figures out the join path and writes the SQL.
+          Ask about any account, deal, or contract — I'll pull the real numbers and the story
+          behind them, so you know not just what's happening, but why.
         </p>
 
         <div className="home-ask-box">
@@ -147,6 +194,47 @@ export default function Home({ onAsk }) {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="home-attention">
+        <div className="home-snapshot-label">Needs attention</div>
+        {attentionError && <div className="error-banner">{attentionError}</div>}
+        {attention && attention.length === 0 && (
+          <p className="home-attention-empty">Nothing trending under target right now.</p>
+        )}
+        {attention === null && !attentionError && (
+          <p className="home-attention-empty">Scanning consumption trends…</p>
+        )}
+        {attention && attention.length > 0 && (
+          <div className="home-attention-list">
+            {attention.map((a) => (
+              <button
+                key={`${a.accountId}-${a.workload}`}
+                className="home-attention-card"
+                onClick={() => onAsk(`Why is ${a.name}'s consumption declining?`)}
+              >
+                <span className={`stat-icon tone-${a.status === "at_risk" ? "bad" : "warn"}`}>
+                  <TargetIcon width={15} height={15} />
+                </span>
+                <div className="home-attention-body">
+                  <div className="home-attention-head">
+                    <strong>{a.name}</strong>
+                    <span className={`status-pill ${a.status === "at_risk" ? "fail" : "ok"}`}>
+                      <span className="status-pill-dot" />
+                      {a.status === "at_risk" ? "at risk" : "trending down"}
+                    </span>
+                    <span className="home-attention-pct">{a.pct}% of target</span>
+                  </div>
+                  <div className="home-attention-meta">
+                    {a.industry.replace("_", " ")} · {a.workload}
+                  </div>
+                  {a.note && <div className="home-attention-note">{a.note}</div>}
+                </div>
+                <ArrowRightIcon className="home-link-arrow" />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="home-links">
