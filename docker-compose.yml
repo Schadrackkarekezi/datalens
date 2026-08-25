@@ -22,6 +22,15 @@ services:
       - "8000:8000"
     env_file:
       - ./backend/.env
+    environment:
+      # .env is written for host-based local dev, where Postgres is reached
+      # via localhost:5432 (the port mapping below exposes it that way).
+      # Inside the Docker network, "localhost" would resolve to the backend
+      # container itself, not the db service — these two overrides (which
+      # take precedence over the same keys in env_file) are what actually
+      # let the container reach Postgres by its service name instead.
+      DATABASE_URL: postgresql://datalens:datalens_dev_only@db:5432/datalens
+      DATABASE_URL_READONLY: postgresql://datalens_readonly:datalens_readonly_dev_only@db:5432/datalens
     depends_on:
       db:
         condition: service_healthy
