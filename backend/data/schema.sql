@@ -190,3 +190,24 @@ CREATE TABLE IF NOT EXISTS glossary_terms (
     definition TEXT NOT NULL,
     embedding  vector(384)
 );
+
+-- Conversation history, keyed by the client-generated conversation_id —
+-- what makes /ask support follow-ups ("now break that down by industry")
+-- instead of every question starting from zero. Previously an in-memory
+-- Python dict (conversations.py), which meant a server restart silently
+-- forgot every conversation in progress; storing it here means it
+-- survives a restart and would be shared correctly across multiple
+-- backend instances too, since every instance reads the same table
+-- instead of its own private memory. `turn` is the same small JSON shape
+-- conversations.py has always built (type/question/sql/message/etc,
+-- varying per response type) — stored as JSONB rather than split into
+-- rigid columns, since its shape genuinely varies by response type and
+-- there's nothing here that needs to be queried by its internal fields.
+CREATE TABLE IF NOT EXISTS conversation_turns (
+    turn_id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    turn            JSONB NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_turns_conv ON conversation_turns(conversation_id, turn_id);

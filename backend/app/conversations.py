@@ -1,22 +1,23 @@
 """
-In-memory, per-session conversation history — what makes /ask support
-follow-up questions ("now break that down by department") instead of every
-question starting from zero.
-
-In-memory and per-process, like rate_limit.py — fine for a single-instance
-demo. A multi-instance production deployment would move this to
-Redis/a database so history survives restarts and is shared across
-processes.
+Conversation history — what makes /ask support follow-up questions
+("now break that down by department") instead of every question starting
+from zero. Stored in Postgres (conversation_turns), not per-process
+memory: the earlier in-memory dict was fine for a single-instance demo,
+but meant a server restart silently forgot every conversation in
+progress. This version survives a restart and would be shared correctly
+across multiple backend instances too, since every instance reads the
+same table instead of its own private memory — the fix that made the
+old in-memory limitation a documented tradeoff was moving the storage,
+not adding a cache in front of it.
 """
 
-import time
 import uuid
-from collections import defaultdict
+
+from psycopg.types.json import Jsonb
+
+from app.database import get_connection
 
 MAX_TURNS = 6  # how many prior turns get fed back into the prompt
-
-_sessions = defaultdict(list)
-_last_active = {}
 
 
 def resolve_conversation_id(conversation_id):
@@ -24,7 +25,17 @@ def resolve_conversation_id(conversation_id):
 
 
 def get_history(conversation_id: str) -> list:
-    return _sessions[conversation_id][-MAX_TURNS:]
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT turn FROM conversation_turns
+                   WHERE conversation_id = %s
+                   ORDER BY turn_id DESC
+                   LIMIT %s""",
+                (conversation_id, MAX_TURNS),
+            )
+            rows = cur.fetchall()
+    return [row[0] for row in reversed(rows)]
 
 
 def add_turn(conversation_id: str, question: str, result: dict):
@@ -57,10 +68,18 @@ def add_turn(conversation_id: str, question: str, result: dict):
             "question": question,
             "message": result["message"],
         }
-    _sessions[conversation_id].append(turn)
-    _last_active[conversation_id] = time.time()
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO conversation_turns (conversation_id, turn) VALUES (%s, %s)",
+                (conversation_id, Jsonb(turn)),
+            )
+        conn.commit()
 
 
 def clear_conversation(conversation_id: str):
-    _sessions.pop(conversation_id, None)
-    _last_active.pop(conversation_id, None)
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM conversation_turns WHERE conversation_id = %s", (conversation_id,))
+        conn.commit()
