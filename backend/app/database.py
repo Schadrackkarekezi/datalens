@@ -2,7 +2,7 @@
 Admin-role Postgres connection - used for schema/FK introspection and by
 seed_db.py. This is NOT the safety boundary for user- or agent-generated
 SQL; that's query_engine.py, which connects as the separate, privilege-
-restricted datalens_readonly role instead.
+restricted traceview_readonly role instead.
 """
 
 import os
@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://datalens:datalens_dev_only@localhost:5432/datalens"
+    "DATABASE_URL", "postgresql://traceview:traceview_dev_only@localhost:5432/traceview"
 )
 
 # The read-only role's connection string - query_engine.py, retrieval.py,
@@ -24,7 +24,7 @@ DATABASE_URL = os.environ.get(
 # copy-pasted three times.
 READONLY_DATABASE_URL = os.environ.get(
     "DATABASE_URL_READONLY",
-    "postgresql://datalens_readonly:datalens_readonly_dev_only@localhost:5432/datalens",
+    "postgresql://traceview_readonly:traceview_readonly_dev_only@localhost:5432/traceview",
 )
 
 

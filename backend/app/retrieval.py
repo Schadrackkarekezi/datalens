@@ -7,7 +7,7 @@ live: inside Postgres, alongside the structured data they get combined
 with for hybrid answers, instead of a separate in-memory index rebuilt
 from scratch on every process start.
 
-Connects through the same datalens_readonly role query_engine.py uses -
+Connects through the same traceview_readonly role query_engine.py uses -
 this is a SELECT-only workload, so it gets the same least-privilege
 connection as everything else that touches the database on the agent's
 behalf, not a separate admin connection just because it's a different

@@ -2,16 +2,16 @@ services:
   db:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: datalens
-      POSTGRES_PASSWORD: datalens_dev_only
-      POSTGRES_DB: datalens
+      POSTGRES_USER: traceview
+      POSTGRES_PASSWORD: traceview_dev_only
+      POSTGRES_DB: traceview
     ports:
       - "5432:5432"
     volumes:
-      - datalens_pgdata:/var/lib/postgresql/data
+      - traceview_pgdata:/var/lib/postgresql/data
       - ./backend/data/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U datalens -d datalens"]
+      test: ["CMD-SHELL", "pg_isready -U traceview -d traceview"]
       interval: 3s
       timeout: 3s
       retries: 10
@@ -29,8 +29,8 @@ services:
       # container itself, not the db service - these two overrides (which
       # take precedence over the same keys in env_file) are what actually
       # let the container reach Postgres by its service name instead.
-      DATABASE_URL: postgresql://datalens:datalens_dev_only@db:5432/datalens
-      DATABASE_URL_READONLY: postgresql://datalens_readonly:datalens_readonly_dev_only@db:5432/datalens
+      DATABASE_URL: postgresql://traceview:traceview_dev_only@db:5432/traceview
+      DATABASE_URL_READONLY: postgresql://traceview_readonly:traceview_readonly_dev_only@db:5432/traceview
     depends_on:
       db:
         condition: service_healthy
@@ -43,4 +43,4 @@ services:
       - backend
 
 volumes:
-  datalens_pgdata:
+  traceview_pgdata:

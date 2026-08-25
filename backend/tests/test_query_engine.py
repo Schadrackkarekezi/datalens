@@ -4,7 +4,7 @@ Tests for the safety boundary in query_engine.run_select().
 These are the most important tests in the project - this is the function
 that decides whether AI-generated (or hand-typed) SQL is allowed to touch
 the database at all. The actual enforcement is Postgres's own privilege
-system (the datalens_readonly role has SELECT and nothing else - see
+system (the traceview_readonly role has SELECT and nothing else - see
 schema.sql), so these tests are exercising a real database role, not a
 mock of one.
 """
@@ -37,8 +37,8 @@ def test_legit_cte_is_allowed(test_db):
         "INSERT INTO widgets (id, name, price) VALUES (3, 'x', 1)",
         "ALTER TABLE widgets ADD COLUMN hacked TEXT",
         "TRUNCATE widgets",
-        "COPY widgets TO '/tmp/datalens_exfil.csv'",
-        "SET SESSION AUTHORIZATION datalens",  # role-escalation attempt
+        "COPY widgets TO '/tmp/traceview_exfil.csv'",
+        "SET SESSION AUTHORIZATION traceview",  # role-escalation attempt
         "WITH x AS (SELECT 1) DELETE FROM widgets",  # disguised write via CTE
     ],
 )

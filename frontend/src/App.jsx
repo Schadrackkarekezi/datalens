@@ -12,7 +12,7 @@ import GraphViewer from "./components/GraphViewer";
 import { runQuery } from "./api";
 import { readJSON } from "./storage";
 
-const HISTORY_KEY = "datalens_query_history";
+const HISTORY_KEY = "traceview_query_history";
 
 const PAGE_TITLES = {
   home: "Home",

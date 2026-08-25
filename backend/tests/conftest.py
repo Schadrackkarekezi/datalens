@@ -2,7 +2,7 @@
 Tests run against the real local Postgres instance (docker-compose's db
 service must be up), using a disposable `widgets` table created and
 dropped per test - not a mock. This is what lets test_query_engine.py
-exercise the actual datalens_readonly role's actual Postgres-enforced
+exercise the actual traceview_readonly role's actual Postgres-enforced
 privileges, not a simulation of them.
 """
 

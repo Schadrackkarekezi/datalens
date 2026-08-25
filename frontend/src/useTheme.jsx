@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { readString } from "./storage";
 
-const STORAGE_KEY = "datalens_theme";
+const STORAGE_KEY = "traceview_theme";
 const ThemeContext = createContext(null);
 
 // "system" means no explicit choice - CSS's own @media (prefers-color-scheme)

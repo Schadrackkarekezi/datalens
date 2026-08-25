@@ -1,5 +1,5 @@
 """
-Executes read-only SQL against the datalens_readonly Postgres role.
+Executes read-only SQL against the traceview_readonly Postgres role.
 
 The safety boundary here is the database itself, not this file: the
 connecting role has been granted SELECT and nothing else, at the Postgres
@@ -51,7 +51,7 @@ def run_select(sql: str):
     if ";" in stripped:
         raise QueryError("Multiple statements are not allowed - submit one query at a time.")
 
-    wrapped = f"SELECT * FROM (\n{stripped}\n) AS datalens_subq LIMIT {MAX_ROWS + 1}"
+    wrapped = f"SELECT * FROM (\n{stripped}\n) AS traceview_subq LIMIT {MAX_ROWS + 1}"
 
     t0 = time.perf_counter()
     try:

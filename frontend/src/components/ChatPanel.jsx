@@ -17,9 +17,9 @@ function newConversationId() {
 // given the backend's own conversation memory is also just in-process and
 // gone on restart (documented in conversations.py). Persisting further
 // than that would silently promise more durability than actually exists.
-const CONV_LIST_KEY = "datalens_conversations";
-const CONV_PREFIX = "datalens_conv_";
-const ACTIVE_CONV_KEY = "datalens_active_conversation";
+const CONV_LIST_KEY = "traceview_conversations";
+const CONV_PREFIX = "traceview_conv_";
+const ACTIVE_CONV_KEY = "traceview_active_conversation";
 
 function loadConversationList() {
   return readJSON(sessionStorage, CONV_LIST_KEY, []);

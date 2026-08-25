@@ -4,7 +4,7 @@ retrieval.py is a real correctness/security property, not a nice-to-have:
 a leak here means one account's private notes surfacing in another
 account's answer. These run against the real seeded data and the real
 pgvector index, not a mock, the same way the SQL safety tests exercise
-the real datalens_readonly role.
+the real traceview_readonly role.
 """
 
 import app.retrieval as retrieval

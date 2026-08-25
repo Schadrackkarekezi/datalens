@@ -11,8 +11,8 @@
 -- (`alembic revision -m "..."`), not a hand-edit here.
 --
 -- Two roles exist on purpose:
---   datalens            - owns the schema, used for migrations and seeding.
---   datalens_readonly   - SELECT-only, granted nothing else. This is the
+--   traceview            - owns the schema, used for migrations and seeding.
+--   traceview_readonly   - SELECT-only, granted nothing else. This is the
 --                          actual safety boundary for AI- or user-generated
 --                          SQL (see backend/query_engine.py), enforced by
 --                          Postgres itself rather than application code -
@@ -24,16 +24,16 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'datalens_readonly') THEN
-        CREATE ROLE datalens_readonly WITH LOGIN PASSWORD 'datalens_readonly_dev_only';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'traceview_readonly') THEN
+        CREATE ROLE traceview_readonly WITH LOGIN PASSWORD 'traceview_readonly_dev_only';
     END IF;
 END
 $$;
 
-GRANT CONNECT ON DATABASE datalens TO datalens_readonly;
-GRANT USAGE ON SCHEMA public TO datalens_readonly;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO datalens_readonly;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO datalens_readonly;
+GRANT CONNECT ON DATABASE traceview TO traceview_readonly;
+GRANT USAGE ON SCHEMA public TO traceview_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO traceview_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO traceview_readonly;
 
 -- ---------------------------------------------------------------------
 -- Dimensions

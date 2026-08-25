@@ -15,13 +15,13 @@ jobs:
       db:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: datalens
-          POSTGRES_PASSWORD: datalens_dev_only
-          POSTGRES_DB: datalens
+          POSTGRES_USER: traceview
+          POSTGRES_PASSWORD: traceview_dev_only
+          POSTGRES_DB: traceview
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U datalens -d datalens"
+          --health-cmd "pg_isready -U traceview -d traceview"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -39,7 +39,7 @@ jobs:
       - name: Apply schema via Alembic (creates tables + the read-only role tests exercise)
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://datalens:datalens_dev_only@localhost:5432/datalens
+          DATABASE_URL: postgresql://traceview:traceview_dev_only@localhost:5432/traceview
         run: alembic upgrade head
 
       # test_retrieval.py and test_verified_queries.py query real seeded,
@@ -87,13 +87,13 @@ jobs:
       db:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: datalens
-          POSTGRES_PASSWORD: datalens_dev_only
-          POSTGRES_DB: datalens
+          POSTGRES_USER: traceview
+          POSTGRES_PASSWORD: traceview_dev_only
+          POSTGRES_DB: traceview
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U datalens -d datalens"
+          --health-cmd "pg_isready -U traceview -d traceview"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -111,7 +111,7 @@ jobs:
       - name: Apply schema via Alembic
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://datalens:datalens_dev_only@localhost:5432/datalens
+          DATABASE_URL: postgresql://traceview:traceview_dev_only@localhost:5432/traceview
         run: alembic upgrade head
 
       - name: Seed structured + unstructured data and embed it
