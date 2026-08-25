@@ -1,29 +1,29 @@
 """
-Tests run against a throwaway SQLite file, not the real datalens.db —
-so a test asserting a write gets blocked doesn't also risk being the thing
-that corrupts real seed data if the assertion is ever wrong.
+Tests run against the real local Postgres instance (docker-compose's db
+service must be up), using a disposable `widgets` table created and
+dropped per test — not a mock. This is what lets test_query_engine.py
+exercise the actual datalens_readonly role's actual Postgres-enforced
+privileges, not a simulation of them.
 """
 
-import sqlite3
-
+import psycopg
 import pytest
 
-import database
+import app.database as database
 
 
 @pytest.fixture
-def test_db(tmp_path, monkeypatch):
-    db_path = tmp_path / "test.db"
-    conn = sqlite3.connect(db_path)
-    conn.executescript(
-        """
-        CREATE TABLE widgets (id INTEGER PRIMARY KEY, name TEXT, price INTEGER);
-        INSERT INTO widgets (id, name, price) VALUES (1, 'gadget', 100);
-        INSERT INTO widgets (id, name, price) VALUES (2, 'gizmo', 250);
-        """
-    )
-    conn.commit()
-    conn.close()
+def test_db():
+    with psycopg.connect(database.DATABASE_URL) as conn:
+        conn.execute("DROP TABLE IF EXISTS widgets")
+        conn.execute("CREATE TABLE widgets (id INTEGER PRIMARY KEY, name TEXT, price INTEGER)")
+        conn.execute(
+            "INSERT INTO widgets (id, name, price) VALUES (1, 'gadget', 100), (2, 'gizmo', 250)"
+        )
+        conn.commit()
 
-    monkeypatch.setattr(database, "DB_PATH", str(db_path))
-    return db_path
+    yield
+
+    with psycopg.connect(database.DATABASE_URL) as conn:
+        conn.execute("DROP TABLE IF EXISTS widgets")
+        conn.commit()

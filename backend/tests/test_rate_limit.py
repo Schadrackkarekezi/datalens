@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-import rate_limit
+import app.rate_limit as rate_limit
 
 
 def fake_request(ip="1.2.3.4"):

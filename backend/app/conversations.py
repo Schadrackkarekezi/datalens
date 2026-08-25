@@ -28,13 +28,28 @@ def get_history(conversation_id: str) -> list:
 
 
 def add_turn(conversation_id: str, question: str, result: dict):
-    if result["response_type"] == "sql":
+    response_type = result["response_type"]
+
+    if response_type == "sql":
         turn = {
             "type": "sql",
             "question": question,
             "sql": result["generated_sql"],
             "row_count": result["row_count"],
             "columns": result["columns"],
+        }
+    elif response_type == "hybrid":
+        # Keeps both halves — a follow-up like "now break that down by
+        # workload" needs the SQL shape to resolve "that" correctly, but
+        # collapsing to a chat-shaped turn (question + message only, the
+        # non-sql branch below) would lose it and only remember the prose.
+        turn = {
+            "type": "hybrid",
+            "question": question,
+            "sql": result["generated_sql"],
+            "row_count": result["row_count"],
+            "columns": result["columns"],
+            "message": result["message"],
         }
     else:
         turn = {

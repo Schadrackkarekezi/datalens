@@ -25,9 +25,9 @@ import json
 
 import networkx as nx
 
-from database import get_connection, fetch_foreign_keys
+from app.database import get_connection, fetch_foreign_keys
 
-ONTOLOGY_PATH = "ontology.json"
+ONTOLOGY_PATH = "data/ontology.json"
 
 _graph = None
 
@@ -38,12 +38,32 @@ def _load_ontology():
 
 
 def build_graph():
+    """
+    Only tables explicitly declared in ontology.json ever become graph
+    nodes — deliberately, not via networkx's implicit node creation.
+
+    networkx.add_edge() silently creates a node for any table it hasn't
+    seen yet, with no attributes. Confirmed as a real bug, not a
+    hypothetical: account_notes and document_chunks both have a foreign
+    key to accounts, so unconditionally adding every FK edge from the live
+    database made them show up as "dimension" tables (the default when a
+    node has no kind) — meaning the SQL-generation prompt saw their real
+    columns and the agent wrote a raw SQL query dumping note content
+    straight into a result cell, completely bypassing retrieve_unstructured
+    and synthesis. Restricting edges to declared entities on both ends is
+    what keeps infrastructure tables (unstructured content, embeddings,
+    verified queries, glossary) out of the graph — and therefore out of
+    the SQL schema — unless they're deliberately added here as a real
+    business entity, not swept in by accident.
+    """
     global _graph
 
     ontology = _load_ontology()
     graph = nx.DiGraph()
 
+    declared_tables = set()
     for entity in ontology["entity_types"]:
+        declared_tables.add(entity["table"])
         graph.add_node(
             entity["table"],
             kind=entity.get("kind", "dimension"),
@@ -55,6 +75,8 @@ def build_graph():
         edges = fetch_foreign_keys(conn)
 
     for edge in edges:
+        if edge["from_table"] not in declared_tables or edge["to_table"] not in declared_tables:
+            continue
         via = f"{edge['from_table']}.{edge['from_column']}"
         label = ontology["relationship_labels"].get(via, "references")
         graph.add_edge(edge["from_table"], edge["to_table"], label=label, via=via)
@@ -74,8 +96,8 @@ def tables_by_kind() -> dict:
     {"fact": [...], "dimension": [...]} — the classic dimensional-modeling
     split (facts = transactional events, dimensions = reference data).
     Presenting the schema this way, instead of as one flat table list,
-    gives the model the same structural cue Snowflake's semantic views
-    give Cortex Analyst: which tables to expect grouping/aggregation
+    gives the model the same structural cue a well-designed semantic
+    layer gives an analyst: which tables to expect grouping/aggregation
     against (facts) versus which ones are just descriptive lookups
     (dimensions).
     """

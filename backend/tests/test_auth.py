@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-import auth
+import app.auth as auth
 
 
 def test_auth_disabled_when_no_key_configured(monkeypatch):

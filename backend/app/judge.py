@@ -99,13 +99,89 @@ ones, or joining the wrong foreign key) — but it can also look
 "incomplete" to someone without this context while actually being exactly
 right (e.g. filtering to specific stages because that's this project's
 definition of "active"). Judge using the context given, not generic
-assumptions about what these terms usually mean elsewhere. Set correct to
-true only if you're confident the logic is right; briefly explain your
-reasoning."""
+assumptions about what these terms usually mean elsewhere.
+
+One specific reasoning trap to avoid: an INNER JOIN on a nullable foreign
+key already excludes every row where that key is NULL — SQL's NULL is
+never equal to anything, including another NULL, so the join condition
+itself does the filtering. Don't flag a query as missing a "WHERE x IS
+NOT NULL" check when an INNER JOIN on that same column already guarantees
+it structurally; that's a false positive, not a real gap. Only flag a
+missing NULL filter if the join is a LEFT/RIGHT JOIN, which would let
+NULLs through.
+
+The broader version of that trap: don't invent an additional filter or
+condition the query "should" have applied unless the question itself, or
+one of the definitions above, actually asked for it. A query that answers
+exactly the question asked — nothing more scoped, nothing more filtered —
+is correct, even if a *different*, more specific question could have been
+asked instead. Confirmed in practice: this judge has flagged correct,
+unscoped queries as wrong for not filtering by a status or a stage that
+nothing in the question or the definitions ever mentioned. If you notice
+yourself about to require a condition, first check it traces back to
+actual text above — not to what would generically seem more thorough.
+
+Set correct to true only if you're confident the logic is right; briefly
+explain your reasoning."""
 
     response = _get_client().chat.completions.parse(
         model=JUDGE_MODEL,
         messages=[{"role": "user", "content": prompt}],
         response_format=JudgeVerdict,
+        # Confirmed in practice: with no temperature set (defaulting to
+        # 1.0), this judge flip-flopped on the identical SQL for the
+        # identical question across two eval runs, minutes apart, with no
+        # code change in between — a correctness verdict shouldn't depend
+        # on sampling luck the way generation's own wording can. 0 isn't a
+        # full determinism guarantee at the API level, but it's the right
+        # direction for a task that's judging right/wrong, not writing.
+        temperature=0,
+    )
+    return response.choices[0].message.parsed
+
+
+class FaithfulnessVerdict(BaseModel):
+    faithful: bool
+    reasoning: str
+
+
+def judge_hybrid_faithfulness(question: str, sql_columns: list, sql_rows: list, sources: list, message: str):
+    """
+    A different question from judge_sql_answer: not "was the right SQL/
+    retrieval chosen" (routing accuracy's job), but "does the synthesized
+    prose actually say only what the SQL result and retrieved context
+    support." This is the failure mode unique to hybrid synthesis — a
+    fluent answer that quietly states a number that isn't in the result,
+    or resolves a disagreement between the two sources by picking one
+    without saying so.
+    """
+    preview_rows = sql_rows[:10] if sql_rows else []
+    source_text = (
+        "\n\n".join(f"[{s['source_type']}] {s['text']}" for s in sources) if sources else "(none retrieved)"
+    )
+
+    prompt = f"""Question: {question}
+
+SQL result — columns: {sql_columns}
+rows (first 10): {preview_rows}
+
+Retrieved context:
+{source_text}
+
+Answer given to the user:
+{message}
+
+Does this answer faithfully reflect ONLY what's in the SQL result and retrieved context above —
+no invented numbers, no claims not backed by either source, and no silently resolving a genuine
+disagreement between them by picking one side without saying so? An answer can be faithful even
+if it's incomplete or doesn't use every row returned; it's unfaithful if it states something as
+fact that the data and context above don't actually support. Set faithful to true only if
+you're confident; briefly explain your reasoning."""
+
+    response = _get_client().chat.completions.parse(
+        model=JUDGE_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        response_format=FaithfulnessVerdict,
+        temperature=0,
     )
     return response.choices[0].message.parsed

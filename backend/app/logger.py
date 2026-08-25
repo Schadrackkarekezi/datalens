@@ -34,6 +34,7 @@ def log_ask(
         "retrieved_terms": [c["term"] for c in result["retrieved_context"]] if result else [],
         "estimated_cost_usd": result["estimated_cost_usd"] if result else estimated_cost_usd,
         "error": error,
+        "trace": result["trace"] if result else [],
     }
     with LOG_PATH.open("a") as f:
         f.write(json.dumps(entry) + "\n")

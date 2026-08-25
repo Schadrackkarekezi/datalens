@@ -1,0 +1,140 @@
+"""
+Unstructured retrieval over document_chunks, backed by pgvector — the
+production-grade replacement for the old in-memory FAISS index (rag.py,
+deleted in the Postgres rewrite). Same embedding model, same normalize +
+cosine-similarity approach; the real difference is where the vectors
+live: inside Postgres, alongside the structured data they get combined
+with for hybrid answers, instead of a separate in-memory index rebuilt
+from scratch on every process start.
+
+Connects through the same datalens_readonly role query_engine.py uses —
+this is a SELECT-only workload, so it gets the same least-privilege
+connection as everything else that touches the database on the agent's
+behalf, not a separate admin connection just because it's a different
+kind of query.
+
+account_id filtering happens in the SQL WHERE clause, not by filtering
+results after the fact — an account-scoped call only ever sees that
+account's notes plus global enablement content, never another account's
+notes. This is the actual isolation boundary Phase 11's upload feature
+depends on; filtering after retrieval would only be a UI-layer illusion
+of isolation, not a real one.
+"""
+
+import os
+
+import psycopg
+from dotenv import load_dotenv
+from pgvector.psycopg import register_vector
+from sentence_transformers import SentenceTransformer
+
+load_dotenv()
+
+READONLY_DATABASE_URL = os.environ.get(
+    "DATABASE_URL_READONLY",
+    "postgresql://datalens_readonly:datalens_readonly_dev_only@localhost:5432/datalens",
+)
+MODEL_NAME = "all-MiniLM-L6-v2"
+
+_model = None
+
+
+def _get_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer(MODEL_NAME)
+    return _model
+
+
+def retrieve_unstructured(question: str, account_id: int = None, top_k: int = 3) -> list:
+    """
+    account_id given: searches that account's notes + global enablement
+    content. account_id=None: searches global enablement content only —
+    never all accounts' notes indiscriminately, since that would be an
+    isolation violation waiting to happen, just with no account_id in
+    hand yet to violate it against.
+    """
+    query_vec = _get_model().encode(question, normalize_embeddings=True)
+
+    with psycopg.connect(READONLY_DATABASE_URL) as conn:
+        register_vector(conn)
+        with conn.cursor() as cur:
+            if account_id is not None:
+                cur.execute(
+                    """
+                    SELECT chunk_id, source_type, source_id, account_id, chunk_text,
+                           1 - (embedding <=> %s) AS score
+                    FROM document_chunks
+                    WHERE embedding IS NOT NULL AND (account_id = %s OR account_id IS NULL)
+                    ORDER BY embedding <=> %s
+                    LIMIT %s
+                    """,
+                    (query_vec, account_id, query_vec, top_k),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT chunk_id, source_type, source_id, account_id, chunk_text,
+                           1 - (embedding <=> %s) AS score
+                    FROM document_chunks
+                    WHERE embedding IS NOT NULL AND account_id IS NULL
+                    ORDER BY embedding <=> %s
+                    LIMIT %s
+                    """,
+                    (query_vec, query_vec, top_k),
+                )
+            rows = cur.fetchall()
+
+    return [
+        {
+            "chunk_id": r[0],
+            "source_type": r[1],
+            "source_id": r[2],
+            "account_id": r[3],
+            "text": r[4],
+            "score": float(r[5]),
+        }
+        for r in rows
+    ]
+
+
+GLOSSARY_MATCH_THRESHOLD = 0.35
+
+
+def retrieve_glossary(question: str, top_k: int = 3) -> list:
+    """
+    Grounds SQL generation in this project's own precise term definitions
+    ("active deal", "win rate") instead of the model inferring a generic
+    one — this is what agent.py's system prompt calls "the exact glossary
+    definition below." Replaces rag.py's old in-memory FAISS index with
+    the same pgvector pattern as everything else in this file.
+
+    GLOSSARY_MATCH_THRESHOLD exists because top_k alone isn't enough —
+    confirmed in eval: a follow-up asking "how many of those are at_risk"
+    pulled in "under-consumption" (score 0.291, real noise — measured
+    against real matches landing at 0.38-0.65) just to fill 3 slots, and
+    the judge then penalized the agent for not using that unrelated
+    definition. Better to return fewer terms than pad with noise.
+    """
+    query_vec = _get_model().encode(question, normalize_embeddings=True)
+
+    with psycopg.connect(READONLY_DATABASE_URL) as conn:
+        register_vector(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT term, definition, 1 - (embedding <=> %s) AS score
+                FROM glossary_terms
+                WHERE embedding IS NOT NULL
+                ORDER BY embedding <=> %s
+                LIMIT %s
+                """,
+                (query_vec, query_vec, top_k),
+            )
+            rows = cur.fetchall()
+
+    return [
+        {"term": r[0], "definition": r[1], "score": float(r[2])}
+        for r in rows
+        if r[2] >= GLOSSARY_MATCH_THRESHOLD
+    ]

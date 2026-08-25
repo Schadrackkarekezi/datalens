@@ -1,0 +1,248 @@
+import json
+import time
+
+import openai
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+
+from app.auth import require_api_key
+from app.conversations import resolve_conversation_id, get_history, add_turn, clear_conversation
+from app.costs import estimate_cost_usd
+from app.database import get_connection, fetch_schema
+from app.knowledge_graph import tables_by_kind, get_graph
+from app.query_engine import run_select, QueryError
+from app.rate_limit import enforce_rate_limit
+from app.agent import run_ask, run_ask_stream, AgentError, MODEL as AGENT_MODEL
+from app.logger import log_ask, read_logs
+import app.upload as upload_module
+from app.models import (
+    ColumnInfo,
+    TableInfo,
+    SchemaResponse,
+    GraphNode,
+    GraphEdge,
+    GraphResponse,
+    QueryRequest,
+    QueryResponse,
+    AskRequest,
+    AskResponse,
+    UploadNoteRequest,
+    UploadEnablementRequest,
+    UploadResponse,
+    LogsResponse,
+)
+
+app = FastAPI(title="DataLens API")
+
+app.add_middleware(
+    CORSMiddleware,
+    # Regex, not a fixed list — Vite falls back to the next free port
+    # whenever something else is already on 5173 (as just happened), and a
+    # hardcoded allowlist silently breaks every time that happens. Scoped
+    # to localhost only, so this stays a dev convenience, not an open CORS
+    # policy — a real deployment would set this to the actual prod origin.
+    allow_origin_regex=r"http://localhost:\d+",
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/schema", response_model=SchemaResponse)
+def get_schema():
+    with get_connection() as conn:
+        tables = fetch_schema(conn)
+
+    kind_by_table = {}
+    for kind, names in tables_by_kind().items():
+        for name in names:
+            kind_by_table[name] = kind
+
+    return SchemaResponse(
+        tables=[
+            TableInfo(
+                name=t["name"],
+                columns=[ColumnInfo(name=c["name"], type=c["type"]) for c in t["columns"]],
+                kind=kind_by_table.get(t["name"]),
+            )
+            for t in tables
+        ]
+    )
+
+
+@app.get("/graph", response_model=GraphResponse)
+def get_graph_structure():
+    graph = get_graph()
+    nodes = [
+        GraphNode(id=name, kind=data.get("kind", "dimension"), description=data.get("description", ""))
+        for name, data in graph.nodes(data=True)
+    ]
+    edges = [
+        GraphEdge(source=u, target=v, label=data.get("label", "references"), via=data.get("via", ""))
+        for u, v, data in graph.edges(data=True)
+    ]
+    return GraphResponse(nodes=nodes, edges=edges)
+
+
+@app.post("/query", response_model=QueryResponse, dependencies=[Depends(require_api_key)])
+def query(request: QueryRequest):
+    try:
+        columns, rows, elapsed_ms, truncated = run_select(request.sql)
+    except QueryError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return QueryResponse(
+        columns=columns,
+        rows=rows,
+        row_count=len(rows),
+        execution_time_ms=elapsed_ms,
+        truncated=truncated,
+    )
+
+
+@app.post("/upload/account-note", response_model=UploadResponse, dependencies=[Depends(require_api_key)])
+def upload_account_note(request: UploadNoteRequest):
+    try:
+        result = upload_module.upload_account_note(request.account_id, request.content, request.author_role)
+    except upload_module.UploadError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return UploadResponse(**result)
+
+
+@app.post("/upload/enablement-content", response_model=UploadResponse, dependencies=[Depends(require_api_key)])
+def upload_enablement_content(request: UploadEnablementRequest):
+    try:
+        result = upload_module.upload_enablement_content(request.title, request.category, request.content)
+    except upload_module.UploadError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return UploadResponse(**result)
+
+
+@app.post(
+    "/ask",
+    response_model=AskResponse,
+    dependencies=[Depends(require_api_key), Depends(enforce_rate_limit)],
+)
+def ask(request: AskRequest):
+    start = time.perf_counter()
+    conversation_id = resolve_conversation_id(request.conversation_id)
+    history = get_history(conversation_id)
+
+    try:
+        result = run_ask(request.question, history=history)
+    except AgentError as e:
+        cost = estimate_cost_usd(AGENT_MODEL, e.prompt_tokens, e.completion_tokens)
+        log_ask(
+            request.question,
+            (time.perf_counter() - start) * 1000,
+            success=False,
+            error=str(e),
+            estimated_cost_usd=cost,
+        )
+        raise HTTPException(status_code=422, detail=str(e))
+    except openai.AuthenticationError:
+        detail = "OPENAI_API_KEY is missing or invalid — set it in backend/.env"
+        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
+        raise HTTPException(status_code=500, detail=detail)
+    except openai.RateLimitError:
+        detail = "OpenAI API rate limit hit — try again shortly"
+        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
+        raise HTTPException(status_code=429, detail=detail)
+    except openai.APIStatusError as e:
+        detail = f"OpenAI API error: {e.message}"
+        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
+        raise HTTPException(status_code=502, detail=detail)
+    except openai.OpenAIError as e:
+        detail = f"OPENAI_API_KEY is missing or invalid — set it in backend/.env ({e})"
+        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
+        raise HTTPException(status_code=500, detail=detail)
+
+    add_turn(conversation_id, question=request.question, result=result)
+    log_ask(request.question, (time.perf_counter() - start) * 1000, success=True, result=result)
+    return AskResponse(**result, conversation_id=conversation_id)
+
+
+def _sse(event: dict) -> str:
+    return f"data: {json.dumps(event, default=str)}\n\n"
+
+
+@app.post(
+    "/ask/stream",
+    dependencies=[Depends(require_api_key), Depends(enforce_rate_limit)],
+)
+def ask_stream(request: AskRequest):
+    """
+    Server-Sent Events version of /ask — same pipeline, same side effects
+    (add_turn, log_ask), but the "unstructured"/"hybrid" answer text
+    arrives as "delta" events instead of appearing all at once. Kept as a
+    separate endpoint rather than replacing /ask, since a streaming body
+    can't change HTTP status after it starts (the 200 + headers are
+    already sent), so errors here are reported as an "error" event in the
+    stream instead of an HTTPException status code — a real difference
+    from /ask's contract, not just a style choice.
+    """
+    start = time.perf_counter()
+    conversation_id = resolve_conversation_id(request.conversation_id)
+    history = get_history(conversation_id)
+
+    def event_stream():
+        def log_failure(detail):
+            log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
+
+        try:
+            for event in run_ask_stream(request.question, history=history):
+                if event["type"] == "complete":
+                    result = event["data"]
+                    add_turn(conversation_id, question=request.question, result=result)
+                    log_ask(request.question, (time.perf_counter() - start) * 1000, success=True, result=result)
+                    yield _sse({"type": "complete", "data": {**result, "conversation_id": conversation_id}})
+                else:
+                    yield _sse(event)
+        except AgentError as e:
+            cost = estimate_cost_usd(AGENT_MODEL, e.prompt_tokens, e.completion_tokens)
+            log_ask(
+                request.question,
+                (time.perf_counter() - start) * 1000,
+                success=False,
+                error=str(e),
+                estimated_cost_usd=cost,
+            )
+            yield _sse({"type": "error", "message": str(e)})
+        except openai.AuthenticationError:
+            detail = "OPENAI_API_KEY is missing or invalid — set it in backend/.env"
+            log_failure(detail)
+            yield _sse({"type": "error", "message": detail})
+        except openai.RateLimitError:
+            detail = "OpenAI API rate limit hit — try again shortly"
+            log_failure(detail)
+            yield _sse({"type": "error", "message": detail})
+        except openai.APIStatusError as e:
+            detail = f"OpenAI API error: {e.message}"
+            log_failure(detail)
+            yield _sse({"type": "error", "message": detail})
+        except openai.OpenAIError as e:
+            detail = f"OPENAI_API_KEY is missing or invalid — set it in backend/.env ({e})"
+            log_failure(detail)
+            yield _sse({"type": "error", "message": detail})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
+    )
+
+
+@app.delete("/conversations/{conversation_id}", dependencies=[Depends(require_api_key)])
+def delete_conversation(conversation_id: str):
+    clear_conversation(conversation_id)
+    return {"status": "cleared"}
+
+
+@app.get("/logs", response_model=LogsResponse, dependencies=[Depends(require_api_key)])
+def logs(limit: int = 50):
+    return LogsResponse(entries=read_logs(limit))

@@ -3,12 +3,15 @@ Tests for the safety boundary in query_engine.run_select().
 
 These are the most important tests in the project — this is the function
 that decides whether AI-generated (or hand-typed) SQL is allowed to touch
-the database at all.
+the database at all. The actual enforcement is Postgres's own privilege
+system (the datalens_readonly role has SELECT and nothing else — see
+schema.sql), so these tests are exercising a real database role, not a
+mock of one.
 """
 
 import pytest
 
-from query_engine import run_select, QueryError
+from app.query_engine import run_select, QueryError
 
 
 def test_select_is_allowed(test_db):
@@ -33,8 +36,9 @@ def test_legit_cte_is_allowed(test_db):
         "UPDATE widgets SET price = 0",
         "INSERT INTO widgets (id, name, price) VALUES (3, 'x', 1)",
         "ALTER TABLE widgets ADD COLUMN hacked TEXT",
-        "ATTACH DATABASE '/tmp/evil.db' AS evil",
-        "PRAGMA writable_schema = 1",
+        "TRUNCATE widgets",
+        "COPY widgets TO '/tmp/datalens_exfil.csv'",
+        "SET SESSION AUTHORIZATION datalens",  # role-escalation attempt
         "WITH x AS (SELECT 1) DELETE FROM widgets",  # disguised write via CTE
     ],
 )
@@ -57,8 +61,13 @@ def test_empty_query_rejected(test_db):
         run_select("   ")
 
 
+def test_stacked_statements_rejected(test_db):
+    with pytest.raises(QueryError):
+        run_select("SELECT * FROM widgets; DROP TABLE widgets")
+
+
 def test_row_cap_truncates(test_db, monkeypatch):
-    import query_engine
+    import app.query_engine as query_engine
 
     monkeypatch.setattr(query_engine, "MAX_ROWS", 1)
     columns, rows, _, truncated = run_select("SELECT * FROM widgets")
@@ -67,11 +76,12 @@ def test_row_cap_truncates(test_db, monkeypatch):
 
 
 def test_query_timeout(test_db, monkeypatch):
-    import query_engine
+    import app.query_engine as query_engine
 
     monkeypatch.setattr(query_engine, "TIMEOUT_SECONDS", 0.01)
-    with pytest.raises(QueryError, match="timeout"):
+    with pytest.raises(QueryError, match="timed out"):
         run_select(
-            "WITH RECURSIVE cnt(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM cnt LIMIT 100000000) "
-            "SELECT COUNT(*) FROM cnt"
+            "WITH RECURSIVE cnt(x) AS "
+            "(SELECT 1 UNION ALL SELECT x + 1 FROM cnt) "
+            "SELECT count(*) FROM cnt"
         )

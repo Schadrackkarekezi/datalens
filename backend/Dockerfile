@@ -9,5 +9,7 @@ COPY . .
 
 EXPOSE 8000
 
-# Seed the DB on first boot if it doesn't already exist, then start the server.
-CMD ["sh", "-c", "test -f datalens.db || python seed_db.py; uvicorn main:app --host 0.0.0.0 --port 8000"]
+# Seeding is a deliberate one-time step (docker compose exec backend python -m
+# scripts.seed_db), not automatic on boot — auto-seeding would re-run against
+# a real Postgres volume on every container restart.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
