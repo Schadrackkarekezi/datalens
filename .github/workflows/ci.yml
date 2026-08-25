@@ -36,11 +36,11 @@ jobs:
         working-directory: backend
         run: pip install -r requirements-dev.txt
 
-      - name: Apply schema (creates tables + the read-only role tests exercise)
+      - name: Apply schema via Alembic (creates tables + the read-only role tests exercise)
         working-directory: backend
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
-          psql "postgresql://datalens:datalens_dev_only@localhost:5432/datalens" -f data/schema.sql
+        env:
+          DATABASE_URL: postgresql://datalens:datalens_dev_only@localhost:5432/datalens
+        run: alembic upgrade head
 
       # test_retrieval.py and test_verified_queries.py query real seeded,
       # embedded rows (document_chunks, verified_queries) — against the
@@ -108,11 +108,11 @@ jobs:
         working-directory: backend
         run: pip install -r requirements-dev.txt
 
-      - name: Apply schema
+      - name: Apply schema via Alembic
         working-directory: backend
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
-          psql "postgresql://datalens:datalens_dev_only@localhost:5432/datalens" -f data/schema.sql
+        env:
+          DATABASE_URL: postgresql://datalens:datalens_dev_only@localhost:5432/datalens
+        run: alembic upgrade head
 
       - name: Seed structured + unstructured data and embed it
         working-directory: backend

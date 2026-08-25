@@ -7,3 +7,5 @@ pgvector
 sentence-transformers
 python-dotenv
 networkx
+alembic
+sqlalchemy

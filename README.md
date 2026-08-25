@@ -59,6 +59,7 @@ Pipeline per `/ask` call: verified-match check → retrieve business context (RA
 |---|---|---|
 | Backend | FastAPI + Pydantic | Async, typed contracts, auto-generated docs |
 | Data | Postgres + pgvector | Structured data and vector search under one privilege model |
+| Migrations | Alembic | Schema changes are incremental and versioned, not a drop-and-recreate on every reseed |
 | Vector search | pgvector + `all-MiniLM-L6-v2` | Local embeddings, no API cost; cosine search is a normal SQL `ORDER BY` |
 | Knowledge graph | networkx | In-memory, derived from real foreign keys |
 | LLM | OpenAI (`gpt-4o` generation, `gpt-4o-mini` judge) | Cheaper model for a narrower verification task |
@@ -75,6 +76,7 @@ cd backend
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # add your OPENAI_API_KEY and DATABASE_URL
+alembic upgrade head   # creates the schema (safe to re-run any time)
 python -m scripts.seed_db
 python -m scripts.seed_unstructured
 python -m scripts.embed_content
@@ -111,7 +113,6 @@ docker compose up --build
 ## Limitations
 
 - It can explain one account at a time, not compare several side by side yet — e.g. it can tell you why one account is declining, but not "compare these 3 accounts for me."
-- The database gets fully wiped and rebuilt every time the demo data is reset. Fine for a demo — a real product with real customer data would need a way to update the database without deleting everything in it first.
 
 ## Project history
 

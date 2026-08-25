@@ -1,8 +1,14 @@
 -- DataLens schema: consumption-based GTM data model, dimension/fact split.
 --
 -- Run automatically by docker-compose on first `db` container creation
--- (mounted into /docker-entrypoint-initdb.d). Re-running against an
--- existing database is safe — every statement is idempotent.
+-- (mounted into /docker-entrypoint-initdb.d) — the fast path for a brand
+-- new database. Re-running against an existing database is safe — every
+-- statement is idempotent — but this file is no longer the ongoing
+-- source of truth for the schema now that migrations/ exists: it's also
+-- executed as-is by the initial Alembic migration
+-- (migrations/versions/..._initial_schema_baseline.py), and any schema
+-- change from here forward belongs in a new migration
+-- (`alembic revision -m "..."`), not a hand-edit here.
 --
 -- Two roles exist on purpose:
 --   datalens            — owns the schema, used for migrations and seeding.
