@@ -79,9 +79,13 @@ Every `/ask` call is a pipeline, logged step-by-step (visible in the UI's reason
 cd backend
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-python seed_db.py
-cp .env.example .env   # add your OPENAI_API_KEY
-uvicorn main:app --reload
+cp .env.example .env   # add your OPENAI_API_KEY and DATABASE_URL
+python -m scripts.seed_db
+python -m scripts.seed_unstructured
+python -m scripts.embed_content
+python -m scripts.seed_glossary
+python -m scripts.seed_verified_queries
+uvicorn app.main:app --reload
 ```
 
 **Frontend:**
@@ -101,7 +105,7 @@ pytest -v
 **Eval suite** (costs a small amount of real OpenAI API usage):
 ```bash
 cd backend
-python run_eval.py
+python -m scripts.run_eval
 ```
 
 **Docker** (written correct-by-inspection; verify with `docker compose up` before relying on it):

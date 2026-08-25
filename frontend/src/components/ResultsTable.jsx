@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ClockIcon, DatabaseIcon } from "./Icons";
 
 export default function ResultsTable({ result, loading }) {
   const [sort, setSort] = useState({ index: null, dir: 1 });
@@ -34,7 +35,12 @@ export default function ResultsTable({ result, loading }) {
   }
 
   if (!result) {
-    return <div className="results-empty">Run a query to see results here.</div>;
+    return (
+      <div className="results-empty">
+        <DatabaseIcon width={20} height={20} />
+        <p>Run a query to see results here.</p>
+      </div>
+    );
   }
 
   const { columns, row_count, execution_time_ms, truncated } = result;
@@ -42,7 +48,14 @@ export default function ResultsTable({ result, loading }) {
   return (
     <div className="results-table">
       <div className="results-meta">
-        {row_count} rows · {execution_time_ms} ms
+        <span className="results-meta-item">
+          <DatabaseIcon width={13} height={13} />
+          {row_count} row{row_count === 1 ? "" : "s"}
+        </span>
+        <span className="results-meta-item">
+          <ClockIcon width={13} height={13} />
+          {execution_time_ms} ms
+        </span>
         {truncated && (
           <span className="truncated-badge">
             truncated at {row_count} rows — refine your query to see more

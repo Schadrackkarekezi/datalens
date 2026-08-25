@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ClockIcon } from "./Icons";
 
 export default function QueryHistory({ history, onSelect, onClear }) {
   const [open, setOpen] = useState(false);
@@ -15,6 +16,7 @@ export default function QueryHistory({ history, onSelect, onClear }) {
   return (
     <div className="query-history" ref={ref}>
       <button className="history-toggle" onClick={() => setOpen((o) => !o)}>
+        <ClockIcon width={13} height={13} />
         History{history.length > 0 && <span className="badge">{history.length}</span>}
       </button>
       {open && (

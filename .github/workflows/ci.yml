@@ -11,6 +11,20 @@ jobs:
   test:
     name: Backend tests
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: datalens
+          POSTGRES_PASSWORD: datalens_dev_only
+          POSTGRES_DB: datalens
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U datalens -d datalens"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -21,6 +35,25 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: pip install -r requirements-dev.txt
+
+      - name: Apply schema (creates tables + the read-only role tests exercise)
+        working-directory: backend
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          psql "postgresql://datalens:datalens_dev_only@localhost:5432/datalens" -f data/schema.sql
+
+      # test_retrieval.py and test_verified_queries.py query real seeded,
+      # embedded rows (document_chunks, verified_queries) — against the
+      # bare schema from the step above those tables are empty and every
+      # one of those tests fails. Same seed chain local dev runs by hand.
+      - name: Seed structured + unstructured data and embed it
+        working-directory: backend
+        run: |
+          python -m scripts.seed_db
+          python -m scripts.seed_unstructured
+          python -m scripts.embed_content
+          python -m scripts.seed_glossary
+          python -m scripts.seed_verified_queries
 
       - name: Run pytest
         working-directory: backend
@@ -50,6 +83,20 @@ jobs:
     name: Agent eval (manual trigger only — costs real API money)
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: datalens
+          POSTGRES_PASSWORD: datalens_dev_only
+          POSTGRES_DB: datalens
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U datalens -d datalens"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -61,12 +108,23 @@ jobs:
         working-directory: backend
         run: pip install -r requirements-dev.txt
 
-      - name: Seed database
+      - name: Apply schema
         working-directory: backend
-        run: python seed_db.py
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          psql "postgresql://datalens:datalens_dev_only@localhost:5432/datalens" -f data/schema.sql
+
+      - name: Seed structured + unstructured data and embed it
+        working-directory: backend
+        run: |
+          python -m scripts.seed_db
+          python -m scripts.seed_unstructured
+          python -m scripts.embed_content
+          python -m scripts.seed_glossary
+          python -m scripts.seed_verified_queries
 
       - name: Run eval suite
         working-directory: backend
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python run_eval.py
+        run: python -m scripts.run_eval

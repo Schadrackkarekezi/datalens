@@ -1,10 +1,30 @@
 services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: datalens
+      POSTGRES_PASSWORD: datalens_dev_only
+      POSTGRES_DB: datalens
+    ports:
+      - "5432:5432"
+    volumes:
+      - datalens_pgdata:/var/lib/postgresql/data
+      - ./backend/data/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U datalens -d datalens"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     env_file:
       - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
@@ -12,3 +32,6 @@ services:
       - "8080:80"
     depends_on:
       - backend
+
+volumes:
+  datalens_pgdata:
