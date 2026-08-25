@@ -3,48 +3,48 @@ Evaluation harness for the /ask agent.
 
 Four suites, run together:
 
-  1. Single-turn (eval_set.json) — one question each, checked three ways:
+  1. Single-turn (eval_set.json) - one question each, checked three ways:
      deterministic pattern/row-count checks (fast, free, catch obviously
-     wrong SQL) AND an LLM-as-judge semantic check (judge.py — catches SQL
+     wrong SQL) AND an LLM-as-judge semantic check (judge.py - catches SQL
      that looks plausible but answers the wrong question). For "ambiguous"
      questions, a pass means the agent replied in chat mode instead of
      hallucinating a query the data can't support.
 
-  2. Multi-turn (eval_conversations.json) — sequences of questions run
+  2. Multi-turn (eval_conversations.json) - sequences of questions run
      through run_ask() with accumulating history, exactly like a real
      conversation. Regression-tests follow-up resolution ("now break that
      down by department") instead of relying on a single manual spot-check.
 
-  3. Retrieval hit-rate (eval_retrieval.json) — checks retrieve_unstructured()
+  3. Retrieval hit-rate (eval_retrieval.json) - checks retrieve_unstructured()
      directly, no LLM generation involved, just "is the expected chunk in
      the top-k." Deliberately includes one documented known-miss rather
-     than being curated to always show 100% — the point of tracking hit-
+     than being curated to always show 100% - the point of tracking hit-
      rate is knowing the real number, and a suite tuned to never fail has
      no regression-detection value.
 
-  4. Routing accuracy + hybrid faithfulness (eval_routing.json) — checks
+  4. Routing accuracy + hybrid faithfulness (eval_routing.json) - checks
      the router picked the right response_type (sql/unstructured/hybrid/
      chat), independent of whether the final answer is correct. For
      "hybrid" cases specifically, also runs judge_hybrid_faithfulness to
      catch the failure mode unique to synthesis: a fluent answer that
      contradicts or goes beyond what the SQL result and retrieved sources
      actually support. Routing correctness and faithfulness are tracked
-     as separate flags, not conflated into one pass/fail — a
+     as separate flags, not conflated into one pass/fail - a
      correctly-routed-but-unfaithful case is a different problem than a
      misrouted one.
 
-Upload isolation is NOT a fifth suite here — test_upload.py in pytest
+Upload isolation is NOT a fifth suite here - test_upload.py in pytest
 already covers it properly (a deterministic security property, not
 something that benefits from probabilistic LLM judgment), and duplicating
 it into this LLM-cost-incurring framework would just pay for a judgment
 call the property doesn't need.
 
 A cost/latency budget check runs against eval_set's own numbers at the
-end — thresholds set with real headroom above observed numbers, not
+end - thresholds set with real headroom above observed numbers, not
 picked arbitrarily (see BUDGET_* below).
 
 AgentError (retries exhausted on genuinely broken SQL) always counts as a
-failure — that's a real bug, not a valid outcome for any eval case.
+failure - that's a real bug, not a valid outcome for any eval case.
 
 Usage: python -m scripts.run_eval   (run from backend/)
 """
@@ -56,10 +56,10 @@ from app.agent import run_ask, AgentError
 from app.judge import judge_sql_answer, judge_hybrid_faithfulness
 from app.retrieval import retrieve_unstructured
 
-EVAL_SET_PATH = "data/eval_set.json"
-EVAL_CONVERSATIONS_PATH = "data/eval_conversations.json"
-EVAL_RETRIEVAL_PATH = "data/eval_retrieval.json"
-EVAL_ROUTING_PATH = "data/eval_routing.json"
+EVAL_SET_PATH = "eval/eval_set.json"
+EVAL_CONVERSATIONS_PATH = "eval/eval_conversations.json"
+EVAL_RETRIEVAL_PATH = "eval/eval_retrieval.json"
+EVAL_ROUTING_PATH = "eval/eval_routing.json"
 RESULTS_PATH = "eval_results.json"
 
 # Calibrated from observed numbers (single-turn avg ~1.3-2.0s, hybrid's two
@@ -115,7 +115,7 @@ def check_sql_case(case: dict, result: dict, history: list = None) -> tuple[bool
     if not verdict.correct:
         return False, f"judge flagged as semantically wrong: {verdict.reasoning}"
 
-    return True, f"ok — judge: {verdict.reasoning}"
+    return True, f"ok - judge: {verdict.reasoning}"
 
 
 def run_case(case: dict) -> dict:
@@ -208,7 +208,7 @@ def run_retrieval_case(case: dict) -> dict:
             for r in results
         )
         detail = case["expected_title"]
-    else:  # account_note — checking the right account's own note surfaced, not a specific note ID
+    else:  # account_note - checking the right account's own note surfaced, not a specific note ID
         hit = any(
             r["source_type"] == "account_note" and r["account_id"] == case["account_id"] for r in results
         )
@@ -220,7 +220,7 @@ def run_retrieval_case(case: dict) -> dict:
         "expected": detail,
         "hit": hit,
         "known_limitation": known_limitation,
-        # A documented known-miss doesn't count against the headline hit-rate —
+        # A documented known-miss doesn't count against the headline hit-rate -
         # it's tracked, not hidden, but it can't "regress" below where it
         # already honestly sits.
         "counts_as_pass": hit or bool(known_limitation),
@@ -262,7 +262,7 @@ def run_routing_case(case: dict) -> dict:
             case["question"], result["columns"], result["rows"], result["retrieved_sources"], result["message"]
         )
         faithful = verdict.faithful
-        faithfulness_reason = f" — faithfulness: {verdict.reasoning}"
+        faithfulness_reason = f" - faithfulness: {verdict.reasoning}"
 
     return {
         "question": case["question"],
@@ -311,13 +311,13 @@ def main():
     faithful_count = sum(r["faithful"] for r in faithfulness_checked)
 
     print(f"\n{'=' * 60}")
-    print(f"Traceview Agent Eval — {passed}/{total} single-turn passed ({accuracy}%)")
-    print(f"Conversations — {convo_passed}/{convo_total} passed")
-    print(f"Retrieval hit-rate — {retrieval_raw_hits}/{retrieval_total} raw "
+    print(f"Traceview Agent Eval - {passed}/{total} single-turn passed ({accuracy}%)")
+    print(f"Conversations - {convo_passed}/{convo_total} passed")
+    print(f"Retrieval hit-rate - {retrieval_raw_hits}/{retrieval_total} raw "
           f"({retrieval_hits}/{retrieval_total} counting documented known limitations)")
-    print(f"Routing accuracy — {routing_correct_count}/{routing_total}")
+    print(f"Routing accuracy - {routing_correct_count}/{routing_total}")
     if faithfulness_checked:
-        print(f"Hybrid faithfulness — {faithful_count}/{len(faithfulness_checked)}")
+        print(f"Hybrid faithfulness - {faithful_count}/{len(faithfulness_checked)}")
     print(f"Average latency: {avg_latency} ms (budget: {BUDGET_MAX_AVG_LATENCY_MS} ms)")
     print(f"Average cost: ${avg_cost} (budget: ${BUDGET_MAX_AVG_COST_USD})")
     print(f"{'=' * 60}\n")

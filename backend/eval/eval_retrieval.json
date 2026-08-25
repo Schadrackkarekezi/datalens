@@ -10,7 +10,7 @@
     "account_id": null,
     "expected_source_type": "enablement_content",
     "expected_title": "Objection Handling: We Already Have a Data Warehouse",
-    "known_limitation": "Target document never appears even in top-8 — confirmed a genuine embedding-similarity limitation (this doc and the 'Legacy Data Warehouses' battlecard share too much vocabulary for all-MiniLM-L6-v2 to separate at this content length), not a fixable question phrasing. Kept in the suite as an honest baseline, not curated away."
+    "known_limitation": "Target document never appears even in top-8 - confirmed a genuine embedding-similarity limitation (this doc and the 'Legacy Data Warehouses' battlecard share too much vocabulary for all-MiniLM-L6-v2 to separate at this content length), not a fixable question phrasing. Kept in the suite as an honest baseline, not curated away."
   },
   {
     "question": "How do capacity contracts and true-ups work?",
