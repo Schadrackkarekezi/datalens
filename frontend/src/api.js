@@ -1,4 +1,4 @@
-const BASE_URL = "http://127.0.0.1:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 // Only sent if VITE_API_KEY is set at build time — auth is opt-in server-side
 // too (backend/auth.py), so local dev with no key configured needs no header.

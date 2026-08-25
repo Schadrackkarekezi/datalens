@@ -1,4 +1,5 @@
 import json
+import os
 import time
 import uuid
 
@@ -36,13 +37,19 @@ from app.models import (
 
 app = FastAPI(title="Traceview API")
 
+# FRONTEND_ORIGIN adds the deployed frontend's real origin on top of the
+# regex below — unset locally, so dev behavior is unchanged; a deployment
+# sets it to the actual prod URL (e.g. https://traceview.example.com).
+FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "")
+
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[FRONTEND_ORIGIN] if FRONTEND_ORIGIN else [],
     # Regex, not a fixed list — Vite falls back to the next free port
     # whenever something else is already on 5173 (as just happened), and a
     # hardcoded allowlist silently breaks every time that happens. Scoped
     # to localhost only, so this stays a dev convenience, not an open CORS
-    # policy — a real deployment would set this to the actual prod origin.
+    # policy — FRONTEND_ORIGIN above is what actually opens it up in prod.
     allow_origin_regex=r"http://localhost:\d+",
     allow_methods=["*"],
     allow_headers=["*"],
