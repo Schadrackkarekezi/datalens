@@ -10,6 +10,7 @@ import ChatPanel from "./components/ChatPanel";
 import Dashboard from "./components/Dashboard";
 import GraphViewer from "./components/GraphViewer";
 import { runQuery } from "./api";
+import { readJSON } from "./storage";
 
 const HISTORY_KEY = "datalens_query_history";
 
@@ -24,11 +25,7 @@ const PAGE_TITLES = {
 };
 
 function loadHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
-  } catch {
-    return [];
-  }
+  return readJSON(localStorage, HISTORY_KEY, []);
 }
 
 export default function App() {

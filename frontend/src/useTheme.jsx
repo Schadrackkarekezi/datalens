@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { readString } from "./storage";
 
 const STORAGE_KEY = "datalens_theme";
 const ThemeContext = createContext(null);
@@ -19,13 +20,7 @@ function systemPrefersDark() {
 }
 
 export function ThemeProvider({ children }) {
-  const [theme, setThemeState] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) || "system";
-    } catch {
-      return "system";
-    }
-  });
+  const [theme, setThemeState] = useState(() => readString(localStorage, STORAGE_KEY, "system"));
   // The actual light/dark value in effect right now - "system" isn't a
   // real theme, it's "whatever the OS says," so anything needing a
   // concrete choice (CodeMirror's theme prop takes "light"/"dark", not

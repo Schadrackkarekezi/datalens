@@ -4,14 +4,8 @@ import ResultsTable from "./ResultsTable";
 import ReasoningTrace from "./ReasoningTrace";
 import { SendIcon, SparkleIcon, ChevronDownIcon, PlusIcon, CloseIcon } from "./Icons";
 import { askQuestionStream, clearConversation } from "../api";
-
-const SUGGESTIONS = [
-  "Which accounts have capacity contracts marked at_risk?",
-  "Which reps logged the most POCs on deals for the Data Sharing workload?",
-  "What's the total committed amount across active capacity contracts, by workload?",
-  "Which deals were partner-sourced this year?",
-  "What's our customer satisfaction score?",
-];
+import { readJSON } from "../storage";
+import { SUGGESTED_QUESTIONS as SUGGESTIONS } from "../suggestedQuestions";
 
 function newConversationId() {
   return crypto.randomUUID();
@@ -28,11 +22,7 @@ const CONV_PREFIX = "datalens_conv_";
 const ACTIVE_CONV_KEY = "datalens_active_conversation";
 
 function loadConversationList() {
-  try {
-    return JSON.parse(sessionStorage.getItem(CONV_LIST_KEY)) || [];
-  } catch {
-    return [];
-  }
+  return readJSON(sessionStorage, CONV_LIST_KEY, []);
 }
 
 function saveConversationList(list) {
@@ -40,11 +30,7 @@ function saveConversationList(list) {
 }
 
 function loadConversationHistory(id) {
-  try {
-    return JSON.parse(sessionStorage.getItem(CONV_PREFIX + id)) || [];
-  } catch {
-    return [];
-  }
+  return readJSON(sessionStorage, CONV_PREFIX + id, []);
 }
 
 function saveConversationHistory(id, history) {
@@ -116,6 +102,15 @@ function AgentAvatar() {
   );
 }
 
+function CostBadge({ data }) {
+  if (data.estimated_cost_usd == null) return null;
+  return (
+    <span className="chat-cost">
+      {data.prompt_tokens + data.completion_tokens} tokens · ${data.estimated_cost_usd.toFixed(5)}
+    </span>
+  );
+}
+
 function Exchange({ entry, onViewOnGraph }) {
   const { question, error, data } = entry;
   const hasSql = data?.response_type === "sql" || data?.response_type === "hybrid";
@@ -159,12 +154,7 @@ function Exchange({ entry, onViewOnGraph }) {
                     )}
                     {" "}Generated SQL{data.attempts > 1 ? ` (took ${data.attempts} attempts)` : ""}
                   </span>
-                  {!hasMessage && !hasExplanation && data.estimated_cost_usd != null && (
-                    <span className="chat-cost">
-                      {data.prompt_tokens + data.completion_tokens} tokens · $
-                      {data.estimated_cost_usd.toFixed(5)}
-                    </span>
-                  )}
+                  {!hasMessage && !hasExplanation && <CostBadge data={data} />}
                 </div>
                 <pre>{data.generated_sql}</pre>
               </div>
@@ -176,12 +166,7 @@ function Exchange({ entry, onViewOnGraph }) {
               <div className="chat-explanation">
                 <ReactMarkdown>{data.explanation}</ReactMarkdown>
                 {data.estimated_cost_usd == null && <span className="chat-typing-cursor" />}
-                {data.estimated_cost_usd != null && (
-                  <span className="chat-cost">
-                    {data.prompt_tokens + data.completion_tokens} tokens · $
-                    {data.estimated_cost_usd.toFixed(5)}
-                  </span>
-                )}
+                <CostBadge data={data} />
               </div>
             )}
 
@@ -190,15 +175,8 @@ function Exchange({ entry, onViewOnGraph }) {
                 {data.response_type === "hybrid" && <div className="chat-hybrid-label">Answer, combining the query result above with retrieved context</div>}
                 <ReactMarkdown>{data.message}</ReactMarkdown>
                 {data.estimated_cost_usd == null && <span className="chat-typing-cursor" />}
-                {data.estimated_cost_usd != null && (
-                  <>
-                    <Sources sources={data.retrieved_sources} />
-                    <span className="chat-cost">
-                      {data.prompt_tokens + data.completion_tokens} tokens · $
-                      {data.estimated_cost_usd.toFixed(5)}
-                    </span>
-                  </>
-                )}
+                {data.estimated_cost_usd != null && <Sources sources={data.retrieved_sources} />}
+                <CostBadge data={data} />
               </div>
             )}
           </div>

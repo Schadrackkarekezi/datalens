@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { runQuery } from "../api";
+import { SUGGESTED_QUESTIONS } from "../suggestedQuestions";
 import {
   SendIcon,
   ArrowRightIcon,
@@ -39,11 +40,7 @@ ORDER BY pct_of_target ASC
 LIMIT 6
 `.trim();
 
-const SUGGESTIONS = [
-  "Which accounts have capacity contracts marked at_risk?",
-  "Which reps logged the most POCs on deals for the Data Sharing workload?",
-  "What's the total committed amount across active capacity contracts, by workload?",
-];
+const SUGGESTIONS = SUGGESTED_QUESTIONS.slice(0, 3);
 
 function greeting() {
   const hour = new Date().getHours();

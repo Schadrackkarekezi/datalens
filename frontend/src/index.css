@@ -31,52 +31,76 @@
   --hover-overlay: rgba(20, 22, 30, 0.035);
   --danger-bg: #fdecec;
   --danger-border: #f3c3c3;
+
+  /* Dark palette values, defined once - unused custom properties cost
+     nothing on a light-mode page. Both trigger blocks below just assign
+     these into the real tokens, instead of each carrying its own copy of
+     the same 18 values that could drift apart on a future palette tweak. */
+  --dark-bg: #0b0d13;
+  --dark-panel: #141822;
+  --dark-panel-raised: #1a1f2c;
+  --dark-border: #252a39;
+  --dark-border-light: #333850;
+  --dark-text: #edeef2;
+  --dark-text-dim: #8b8fa3;
+  --dark-text-faint: #5c6178;
+  --dark-accent: #3b82f6;
+  --dark-accent-hover: #5b9bff;
+  --dark-accent-glow: rgba(59, 130, 246, 0.35);
+  --dark-green: #22c55e;
+  --dark-red: #ff8a8a;
+  --dark-amber: #f5a623;
+  --dark-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.25);
+  --dark-shadow-md: 0 16px 36px rgba(0, 0, 0, 0.4);
+  --dark-hover-overlay: rgba(255, 255, 255, 0.03);
+  --dark-danger-bg: #2c0f0f;
+  --dark-danger-border: #4a1a1a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0b0d13;
-    --panel: #141822;
-    --panel-raised: #1a1f2c;
-    --border: #252a39;
-    --border-light: #333850;
-    --text: #edeef2;
-    --text-dim: #8b8fa3;
-    --text-faint: #5c6178;
-    --accent: #3b82f6;
-    --accent-hover: #5b9bff;
-    --accent-glow: rgba(59, 130, 246, 0.35);
-    --green: #22c55e;
-    --red: #ff8a8a;
-    --amber: #f5a623;
-    --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.25);
-    --shadow-md: 0 16px 36px rgba(0, 0, 0, 0.4);
-    --hover-overlay: rgba(255, 255, 255, 0.03);
-    --danger-bg: #2c0f0f;
-    --danger-border: #4a1a1a;
+    --bg: var(--dark-bg);
+    --panel: var(--dark-panel);
+    --panel-raised: var(--dark-panel-raised);
+    --border: var(--dark-border);
+    --border-light: var(--dark-border-light);
+    --text: var(--dark-text);
+    --text-dim: var(--dark-text-dim);
+    --text-faint: var(--dark-text-faint);
+    --accent: var(--dark-accent);
+    --accent-hover: var(--dark-accent-hover);
+    --accent-glow: var(--dark-accent-glow);
+    --green: var(--dark-green);
+    --red: var(--dark-red);
+    --amber: var(--dark-amber);
+    --shadow-sm: var(--dark-shadow-sm);
+    --shadow-md: var(--dark-shadow-md);
+    --hover-overlay: var(--dark-hover-overlay);
+    --danger-bg: var(--dark-danger-bg);
+    --danger-border: var(--dark-danger-border);
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0b0d13;
-  --panel: #141822;
-  --panel-raised: #1a1f2c;
-  --border: #252a39;
-  --border-light: #333850;
-  --text: #edeef2;
-  --text-dim: #8b8fa3;
-  --text-faint: #5c6178;
-  --accent: #3b82f6;
-  --accent-hover: #5b9bff;
-  --accent-glow: rgba(59, 130, 246, 0.35);
-  --green: #22c55e;
-  --red: #ff8a8a;
-  --amber: #f5a623;
-  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 16px 36px rgba(0, 0, 0, 0.4);
-  --hover-overlay: rgba(255, 255, 255, 0.03);
-  --danger-bg: #2c0f0f;
-  --danger-border: #4a1a1a;
+  --bg: var(--dark-bg);
+  --panel: var(--dark-panel);
+  --panel-raised: var(--dark-panel-raised);
+  --border: var(--dark-border);
+  --border-light: var(--dark-border-light);
+  --text: var(--dark-text);
+  --text-dim: var(--dark-text-dim);
+  --text-faint: var(--dark-text-faint);
+  --accent: var(--dark-accent);
+  --accent-hover: var(--dark-accent-hover);
+  --accent-glow: var(--dark-accent-glow);
+  --green: var(--dark-green);
+  --red: var(--dark-red);
+  --amber: var(--dark-amber);
+  --shadow-sm: var(--dark-shadow-sm);
+  --shadow-md: var(--dark-shadow-md);
+  --hover-overlay: var(--dark-hover-overlay);
+  --danger-bg: var(--dark-danger-bg);
+  --danger-border: var(--dark-danger-border);
 }
 
 * {

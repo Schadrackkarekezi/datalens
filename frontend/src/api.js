@@ -8,27 +8,30 @@ function headers(extra = {}) {
   return API_KEY ? { ...extra, "X-API-Key": API_KEY } : extra;
 }
 
+// Every non-streaming call below is fetch + parse JSON + throw with the
+// server's own detail message (falling back to a generic one) on failure
+// - one helper instead of six copies of that pattern.
+async function apiFetch(path, options, label) {
+  const res = await fetch(`${BASE_URL}${path}`, options);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || `${label} (${res.status})`);
+  return data;
+}
+
 export async function getSchema() {
-  const res = await fetch(`${BASE_URL}/schema`);
-  if (!res.ok) throw new Error(`Failed to load schema (${res.status})`);
-  return res.json();
+  return apiFetch("/schema", undefined, "Failed to load schema");
 }
 
 export async function getGraph() {
-  const res = await fetch(`${BASE_URL}/graph`);
-  if (!res.ok) throw new Error(`Failed to load graph (${res.status})`);
-  return res.json();
+  return apiFetch("/graph", undefined, "Failed to load graph");
 }
 
 export async function runQuery(sql) {
-  const res = await fetch(`${BASE_URL}/query`, {
-    method: "POST",
-    headers: headers({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ sql }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || `Query failed (${res.status})`);
-  return data;
+  return apiFetch(
+    "/query",
+    { method: "POST", headers: headers({ "Content-Type": "application/json" }), body: JSON.stringify({ sql }) },
+    "Query failed"
+  );
 }
 
 // Only "unstructured"/"hybrid" answers ever send "start"/"delta" events
@@ -88,29 +91,29 @@ export async function clearConversation(conversationId) {
 }
 
 export async function getLogs(limit = 50) {
-  const res = await fetch(`${BASE_URL}/logs?limit=${limit}`, { headers: headers() });
-  if (!res.ok) throw new Error(`Failed to load logs (${res.status})`);
-  return res.json();
+  return apiFetch(`/logs?limit=${limit}`, { headers: headers() }, "Failed to load logs");
 }
 
 export async function uploadAccountNote(accountId, content, authorRole) {
-  const res = await fetch(`${BASE_URL}/upload/account-note`, {
-    method: "POST",
-    headers: headers({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ account_id: accountId, content, author_role: authorRole }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || `Upload failed (${res.status})`);
-  return data;
+  return apiFetch(
+    "/upload/account-note",
+    {
+      method: "POST",
+      headers: headers({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ account_id: accountId, content, author_role: authorRole }),
+    },
+    "Upload failed"
+  );
 }
 
 export async function uploadEnablementContent(title, category, content) {
-  const res = await fetch(`${BASE_URL}/upload/enablement-content`, {
-    method: "POST",
-    headers: headers({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ title, category, content }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || `Upload failed (${res.status})`);
-  return data;
+  return apiFetch(
+    "/upload/enablement-content",
+    {
+      method: "POST",
+      headers: headers({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ title, category, content }),
+    },
+    "Upload failed"
+  );
 }
