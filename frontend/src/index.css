@@ -356,10 +356,42 @@ input:focus-visible {
   flex-shrink: 0;
 }
 
+.content-topbar-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .content-topbar h1 {
   font-size: 16px;
   font-weight: 600;
   margin: 0;
+}
+
+/* Hidden on desktop - only the mobile breakpoint below turns this into a
+   real button, matching the sidebar's own default-hidden drawer state. */
+.mobile-menu-btn {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.mobile-menu-btn:hover {
+  color: var(--text);
+  border-color: var(--border-light);
+}
+
+.sidebar-overlay {
+  display: none;
 }
 
 /* Schema browser */
@@ -2313,6 +2345,76 @@ tbody tr:hover {
   }
   .home-links {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Mobile (<=768px): sidebar becomes an off-canvas drawer ---------- */
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-md);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 40;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  .content-topbar {
+    padding: 12px 16px;
+  }
+
+  main {
+    padding: 16px;
+  }
+
+  .home-snapshot-tiles {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .home-attention-head {
+    gap: 6px;
+  }
+
+  .home-attention-pct {
+    margin-left: 0;
+  }
+
+  /* Graph page: inspector panel drops below the canvas instead of sitting
+     beside it - side by side at this width squeezes both into uselessness. */
+  .graph-canvas-row {
+    flex-direction: column;
+  }
+
+  .graph-inspector {
+    width: 100%;
+  }
+
+  .chat-question-bubble {
+    max-width: 90%;
+  }
+
+  .chat-answer-row {
+    gap: 8px;
   }
 }
 

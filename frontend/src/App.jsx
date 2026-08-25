@@ -9,6 +9,7 @@ import ResultsTable from "./components/ResultsTable";
 import ChatPanel from "./components/ChatPanel";
 import Dashboard from "./components/Dashboard";
 import GraphViewer from "./components/GraphViewer";
+import { MenuIcon } from "./components/Icons";
 import { runQuery } from "./api";
 import { readJSON } from "./storage";
 
@@ -39,6 +40,7 @@ export default function App() {
   const [mode, setMode] = useState("home");
   const [graphHighlight, setGraphHighlight] = useState(null);
   const [pendingQuestion, setPendingQuestion] = useState(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
@@ -100,10 +102,21 @@ export default function App() {
         activeTable={activeTable}
         onSchemaLoaded={setConnected}
         connected={connected}
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
       />
       <div className="main-column">
         <div className="content-topbar">
-          <h1>{PAGE_TITLES[mode]}</h1>
+          <div className="content-topbar-title">
+            <button
+              className="mobile-menu-btn"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Open menu"
+            >
+              <MenuIcon width={20} height={20} />
+            </button>
+            <h1>{PAGE_TITLES[mode]}</h1>
+          </div>
           {mode === "query" && (
             <QueryHistory history={history} onSelect={setSql} onClear={() => setHistory([])} />
           )}
