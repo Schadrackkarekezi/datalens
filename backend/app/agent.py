@@ -86,7 +86,7 @@ class AgentResponse(BaseModel):
     response_type: Literal["sql", "chat", "unstructured", "hybrid"]
     message: Optional[str] = None  # chat mode: the reply text
     sql: Optional[str] = None  # sql / hybrid mode: the query
-    account_hint: Optional[str] = None  # unstructured / hybrid: account name as mentioned in the question, if any
+    account_hints: list[str] = []  # unstructured / hybrid: every account name mentioned, if any
 
 
 class AgentError(Exception):
@@ -159,24 +159,37 @@ def _most_recent_data_date(conn):
     return row[0] if row else None
 
 
-def _resolve_account_id(conn, account_hint: str):
+def _resolve_account_ids(conn, account_hints: list[str]):
     """
-    The model can only echo whatever name-like phrase appeared in the
+    The model can only echo whatever name-like phrases appeared in the
     question — it has the schema, not the actual row data — so this does
-    the real lookup against accounts.name. A fuzzy ILIKE match, not an
-    exact one: "Northbridge" should resolve to "Northbridge Retail Co."
-    Returns None (global-only retrieval) rather than guessing if nothing
-    matches, which is the safe direction to fail in.
+    the real lookup against accounts.name, one ILIKE match per hint (not
+    exact: "Ashford" should resolve to "Ashford Capital Partners"). A
+    hint that matches nothing is silently skipped rather than guessed at
+    — global-only retrieval for that one name is the safe direction to
+    fail in, same as before this supported more than one hint.
+
+    Returns (ids, names): ids is every hint that resolved, in order;
+    names is {account_id: real account name}, needed so a multi-account
+    hybrid/unstructured answer can label which account each retrieved
+    note actually belongs to instead of blending them into one
+    undifferentiated pile of text.
     """
-    if not account_hint:
-        return None
+    ids = []
+    names = {}
     with conn.cursor() as cur:
-        cur.execute("SELECT account_id FROM accounts WHERE name ILIKE %s LIMIT 1", (f"%{account_hint}%",))
-        row = cur.fetchone()
-    return row[0] if row else None
+        for hint in account_hints:
+            if not hint:
+                continue
+            cur.execute("SELECT account_id, name FROM accounts WHERE name ILIKE %s LIMIT 1", (f"%{hint}%",))
+            row = cur.fetchone()
+            if row:
+                ids.append(row[0])
+                names[row[0]] = row[1]
+    return ids, names
 
 
-def _synthesize_stream(question: str, sql_result: dict, sources: list, history: list):
+def _synthesize_stream(question: str, sql_result: dict, sources: list, history: list, account_names: dict = None):
     """
     The second LLM call for "unstructured"/"hybrid" turns — the first call
     only decided the route (and wrote SQL, for hybrid); this one actually
@@ -185,6 +198,13 @@ def _synthesize_stream(question: str, sql_result: dict, sources: list, history: 
     parse out of prose, which is exactly what makes it streamable: unlike
     the routing call (strict JSON, unreadable until fully parsed), this
     one can be shown to the user token by token as it's written.
+
+    account_names ({account_id: name}) labels each source by which
+    account it's actually about, not just its source_type — with one
+    account in play the distinction is redundant (everything's about the
+    same account), but a genuine multi-account question ("why are X and Y
+    both declining") needs it, or the model sees an undifferentiated pile
+    of notes with no way to tell whose is whose.
 
     Yields ("delta", text) for each chunk as it arrives, then a final
     ("usage", {...}) once the stream ends.
@@ -198,9 +218,12 @@ def _synthesize_stream(question: str, sql_result: dict, sources: list, history: 
         )
 
     if sources:
-        source_text = "\n\n".join(
-            f"[{s['source_type']}, similarity {s['score']:.2f}] {s['text']}" for s in sources
-        )
+        def _label(s):
+            account_name = (account_names or {}).get(s.get("account_id"))
+            source = f"{s['source_type']} — {account_name}" if account_name else s["source_type"]
+            return f"[{source}, similarity {s['score']:.2f}]"
+
+        source_text = "\n\n".join(f"{_label(s)} {s['text']}" for s in sources)
         parts.append(f"Retrieved context:\n{source_text}")
     else:
         parts.append("Retrieved context: (nothing matched closely enough to be useful)")
@@ -209,6 +232,16 @@ def _synthesize_stream(question: str, sql_result: dict, sources: list, history: 
     if history_text:
         parts.append(history_text)
 
+    multi_account_note = (
+        "\n\nThe retrieved context spans more than one account (see the account name in each "
+        "source's label) — compare and contrast them explicitly, don't blend them into one "
+        "undifferentiated narrative. If one account's cause isn't covered by its own retrieved "
+        "notes, say so for that account specifically rather than borrowing another account's "
+        "reason for it."
+        if account_names and len(account_names) > 1
+        else ""
+    )
+
     prompt = "\n\n".join(parts) + (
         "\n\nWrite a concise, natural-language answer to the question, grounded only in the "
         "data and context above — never invent a number or claim that isn't present in them. "
@@ -216,6 +249,7 @@ def _synthesize_stream(question: str, sql_result: dict, sources: list, history: 
         "explicitly rather than silently picking one. If the retrieved context is empty or "
         "clearly irrelevant, say honestly that there's no note or enablement content covering "
         "this rather than answering from the SQL result alone as if that were the full picture."
+        + multi_account_note
     )
 
     stream = _get_client().chat.completions.create(
@@ -499,19 +533,25 @@ You have four response modes, chosen per turn:
 - "sql": the question asks for a number or a list this schema answers
   directly, with no "why" attached (e.g. "how many accounts are
   at_risk"). Write a single Postgres SELECT query in sql — no markdown
-  fences, no explanation. Leave message and account_hint empty.
+  fences, no explanation. Leave message and account_hints empty.
 - "unstructured": the question asks for something only account notes or
   enablement content would have — a reason, a recommendation, a sales
   play, an objection-handling script — not a number (e.g. "how should I
   handle a pricing objection," "why did we lose this account"). No SQL.
-  If the question is clearly about one specific account, set account_hint
-  to that account's name exactly as mentioned in the question; leave it
-  empty for a general, company-wide question. Leave sql and message
-  empty — message gets filled in after retrieval, not by you here.
+  If the question names one or more specific accounts, set account_hints
+  to every one of those account names exactly as mentioned in the
+  question (a list — one item for a single account, several for a
+  question comparing multiple accounts); leave it empty for a general,
+  company-wide question. Leave sql and message empty — message gets
+  filled in after retrieval, not by you here.
 - "hybrid": the question needs both a real number from the schema AND the
   narrative behind it — most often "why is X declining / at risk /
-  growing." Write the SQL that gets the number in sql, AND set
-  account_hint the same way as "unstructured." Leave message empty.
+  growing," including when it names several accounts at once ("why are X
+  and Y both declining," "compare consumption trends across these 3
+  accounts"). Write the SQL that gets the number(s) in sql — for more
+  than one account, that means the SQL itself covers all of them, not
+  just the first — AND set account_hints the same way as "unstructured,"
+  listing every account name mentioned. Leave message empty.
 - "chat": everything else — greetings, small talk, meta-questions about a
   previous answer ("are you sure?", "why did you write it that way?",
   "what does that mean?"), a genuine question about how this tool itself
@@ -520,7 +560,7 @@ You have four response modes, chosen per turn:
   ambiguous, or an honest decline when nothing in the schema or the notes
   can answer it (forecasts, satisfaction scores, external market data,
   etc). Write a natural, concise, warm reply in message — leave sql and
-  account_hint empty. When explaining a previous answer, how the tool
+  account_hints empty. When explaining a previous answer, how the tool
   works, or declining a question, be specific about why, using the
   schema, the "About DataLens" section, and conversation history below —
   never your own general knowledge about what a similar-sounding term
@@ -653,16 +693,17 @@ Relevant business term definitions:
 
         if parsed.response_type == "unstructured":
             with get_connection() as conn:
-                account_id = _resolve_account_id(conn, parsed.account_hint)
+                account_ids, account_names = _resolve_account_ids(conn, parsed.account_hints)
+            retrieve_top_k = 4 * max(1, len(account_ids))
 
             t_retrieve = time.perf_counter()
-            sources = retrieve_unstructured(question, account_id=account_id, top_k=4)
+            sources = retrieve_unstructured(question, account_id=account_ids or None, top_k=retrieve_top_k)
             trace.append({
                 "step": "unstructured_retrieve",
                 "attempt": attempt,
                 "latency_ms": round((time.perf_counter() - t_retrieve) * 1000, 2),
-                "account_hint": parsed.account_hint,
-                "resolved_account_id": account_id,
+                "account_hints": parsed.account_hints,
+                "resolved_account_ids": account_ids,
                 "sources": [{"source_type": s["source_type"], "score": round(s["score"], 4)} for s in sources],
             })
 
@@ -684,7 +725,9 @@ Relevant business term definitions:
             synth_usage = {"prompt_tokens": 0, "completion_tokens": 0}
             synth_status = "unstructured"
             try:
-                for kind, value in _synthesize_stream(question, sql_result=None, sources=sources, history=history):
+                for kind, value in _synthesize_stream(
+                    question, sql_result=None, sources=sources, history=history, account_names=account_names
+                ):
                     if kind == "delta":
                         message_parts.append(value)
                         yield {"type": "delta", "text": value}
@@ -843,18 +886,24 @@ Relevant business term definitions:
             return
 
         # hybrid — the SQL succeeded above; now pull unstructured context
-        # for the same account and synthesize one answer from both.
+        # for the same account(s) and synthesize one answer from both.
+        # top_k scales with how many accounts are actually in play — 4 was
+        # tuned for one account, and stays 4 for a single-account question,
+        # but a genuine multi-account comparison ("why are X and Y both
+        # declining") needs enough headroom that account Y's note doesn't
+        # get crowded out of a fixed top-4 by account X's chunks alone.
         with get_connection() as conn:
-            account_id = _resolve_account_id(conn, parsed.account_hint)
+            account_ids, account_names = _resolve_account_ids(conn, parsed.account_hints)
+        retrieve_top_k = 4 * max(1, len(account_ids))
 
         t_retrieve = time.perf_counter()
-        sources = retrieve_unstructured(question, account_id=account_id, top_k=4)
+        sources = retrieve_unstructured(question, account_id=account_ids or None, top_k=retrieve_top_k)
         trace.append({
             "step": "unstructured_retrieve",
             "attempt": attempt,
             "latency_ms": round((time.perf_counter() - t_retrieve) * 1000, 2),
-            "account_hint": parsed.account_hint,
-            "resolved_account_id": account_id,
+            "account_hints": parsed.account_hints,
+            "resolved_account_ids": account_ids,
             "sources": [{"source_type": s["source_type"], "score": round(s["score"], 4)} for s in sources],
         })
 
@@ -877,7 +926,11 @@ Relevant business term definitions:
         synth_status = "hybrid"
         try:
             for kind, value in _synthesize_stream(
-                question, sql_result={"columns": columns, "rows": rows}, sources=sources, history=history
+                question,
+                sql_result={"columns": columns, "rows": rows},
+                sources=sources,
+                history=history,
+                account_names=account_names,
             ):
                 if kind == "delta":
                     message_parts.append(value)

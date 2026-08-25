@@ -110,10 +110,6 @@ python -m scripts.run_eval
 docker compose up --build
 ```
 
-## Limitations
-
-- It can explain one account at a time, not compare several side by side yet — e.g. it can tell you why one account is declining, but not "compare these 3 accounts for me."
-
 ## Project history
 
 Built incrementally with Claude Code as a pairing partner — see `PROJECT_PLAN.md` for how the plan evolved along the way.

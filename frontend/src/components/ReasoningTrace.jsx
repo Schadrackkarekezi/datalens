@@ -42,7 +42,8 @@ function describeStep(step) {
 
   if (step.step === "unstructured_retrieve") {
     const sources = step.sources || [];
-    const scope = step.resolved_account_id ? `account #${step.resolved_account_id}` : "company-wide";
+    const ids = step.resolved_account_ids || [];
+    const scope = ids.length === 0 ? "company-wide" : ids.length === 1 ? `account #${ids[0]}` : `accounts #${ids.join(", #")}`;
     if (sources.length === 0) return `no matching context found (${scope})`;
     return `${sources.length} source${sources.length > 1 ? "s" : ""} retrieved (${scope}) — top score ${(sources[0].score * 100).toFixed(0)}%`;
   }

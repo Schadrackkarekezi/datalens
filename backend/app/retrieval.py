@@ -46,30 +46,40 @@ def _get_model():
     return _model
 
 
-def retrieve_unstructured(question: str, account_id: int = None, top_k: int = 3) -> list:
+def retrieve_unstructured(question: str, account_id=None, top_k: int = 3) -> list:
     """
-    account_id given: searches that account's notes + global enablement
-    content. account_id=None: searches global enablement content only —
-    never all accounts' notes indiscriminately, since that would be an
-    isolation violation waiting to happen, just with no account_id in
-    hand yet to violate it against.
+    account_id: None (global enablement content only), a single account
+    id, or a list of account ids (a genuine multi-account hybrid
+    question, e.g. "compare accounts X and Y") — normalized to a list
+    either way, so the SQL is always one query with `= ANY(...)`, not N
+    separate ones. Never all accounts' notes indiscriminately regardless
+    of which form this takes — that would be an isolation violation
+    waiting to happen, just with no account_id(s) in hand yet to violate
+    it against.
     """
+    if isinstance(account_id, (list, tuple, set)):
+        account_ids = list(account_id) or None
+    elif account_id is not None:
+        account_ids = [account_id]
+    else:
+        account_ids = None
+
     query_vec = _get_model().encode(question, normalize_embeddings=True)
 
     with psycopg.connect(READONLY_DATABASE_URL) as conn:
         register_vector(conn)
         with conn.cursor() as cur:
-            if account_id is not None:
+            if account_ids is not None:
                 cur.execute(
                     """
                     SELECT chunk_id, source_type, source_id, account_id, chunk_text,
                            1 - (embedding <=> %s) AS score
                     FROM document_chunks
-                    WHERE embedding IS NOT NULL AND (account_id = %s OR account_id IS NULL)
+                    WHERE embedding IS NOT NULL AND (account_id = ANY(%s) OR account_id IS NULL)
                     ORDER BY embedding <=> %s
                     LIMIT %s
                     """,
-                    (query_vec, account_id, query_vec, top_k),
+                    (query_vec, account_ids, query_vec, top_k),
                 )
             else:
                 cur.execute(
