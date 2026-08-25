@@ -1,5 +1,5 @@
 """
-Unstructured retrieval over document_chunks, backed by pgvector — the
+Unstructured retrieval over document_chunks, backed by pgvector - the
 production-grade replacement for the old in-memory FAISS index (rag.py,
 deleted in the Postgres rewrite). Same embedding model, same normalize +
 cosine-similarity approach; the real difference is where the vectors
@@ -7,14 +7,14 @@ live: inside Postgres, alongside the structured data they get combined
 with for hybrid answers, instead of a separate in-memory index rebuilt
 from scratch on every process start.
 
-Connects through the same datalens_readonly role query_engine.py uses —
+Connects through the same datalens_readonly role query_engine.py uses -
 this is a SELECT-only workload, so it gets the same least-privilege
 connection as everything else that touches the database on the agent's
 behalf, not a separate admin connection just because it's a different
 kind of query.
 
 account_id filtering happens in the SQL WHERE clause, not by filtering
-results after the fact — an account-scoped call only ever sees that
+results after the fact - an account-scoped call only ever sees that
 account's notes plus global enablement content, never another account's
 notes. This is the actual isolation boundary Phase 11's upload feature
 depends on; filtering after retrieval would only be a UI-layer illusion
@@ -50,10 +50,10 @@ def retrieve_unstructured(question: str, account_id=None, top_k: int = 3) -> lis
     """
     account_id: None (global enablement content only), a single account
     id, or a list of account ids (a genuine multi-account hybrid
-    question, e.g. "compare accounts X and Y") — normalized to a list
+    question, e.g. "compare accounts X and Y") - normalized to a list
     either way, so the SQL is always one query with `= ANY(...)`, not N
     separate ones. Never all accounts' notes indiscriminately regardless
-    of which form this takes — that would be an isolation violation
+    of which form this takes - that would be an isolation violation
     waiting to happen, just with no account_id(s) in hand yet to violate
     it against.
     """
@@ -115,13 +115,13 @@ def retrieve_glossary(question: str, top_k: int = 3) -> list:
     """
     Grounds SQL generation in this project's own precise term definitions
     ("active deal", "win rate") instead of the model inferring a generic
-    one — this is what agent.py's system prompt calls "the exact glossary
+    one - this is what agent.py's system prompt calls "the exact glossary
     definition below." Replaces rag.py's old in-memory FAISS index with
     the same pgvector pattern as everything else in this file.
 
-    GLOSSARY_MATCH_THRESHOLD exists because top_k alone isn't enough —
+    GLOSSARY_MATCH_THRESHOLD exists because top_k alone isn't enough -
     confirmed in eval: a follow-up asking "how many of those are at_risk"
-    pulled in "under-consumption" (score 0.291, real noise — measured
+    pulled in "under-consumption" (score 0.291, real noise - measured
     against real matches landing at 0.38-0.65) just to fill 3 slots, and
     the judge then penalized the agent for not using that unrelated
     definition. Better to return fewer terms than pad with noise.

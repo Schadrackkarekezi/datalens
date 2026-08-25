@@ -52,7 +52,7 @@ export default function Upload() {
   return (
     <div className="upload-view">
       <p className="upload-intro">
-        Add a new account note or piece of enablement content — it's chunked and embedded
+        Add a new account note or piece of enablement content - it's chunked and embedded
         immediately, so it's retrievable by the agent right after you submit. Account notes are
         scoped to the account you pick and can never surface in a question about a different one;
         enablement content is global.
@@ -121,7 +121,7 @@ export default function Upload() {
             rows={8}
             placeholder={
               kind === "note"
-                ? "QBR note — what happened, why, what's the plan…"
+                ? "QBR note - what happened, why, what's the plan…"
                 : "The actual battlecard / play / FAQ text…"
             }
           />
@@ -136,7 +136,7 @@ export default function Upload() {
 
       {result && (
         <div className="upload-success">
-          Uploaded — split into {result.chunks_created} chunk{result.chunks_created > 1 ? "s" : ""}, all{" "}
+          Uploaded - split into {result.chunks_created} chunk{result.chunks_created > 1 ? "s" : ""}, all{" "}
           {result.chunks_embedded} embedded and retrievable now. Try asking about it in Ask AI.
         </div>
       )}

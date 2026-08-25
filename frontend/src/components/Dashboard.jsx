@@ -3,7 +3,7 @@ import { getLogs } from "../api";
 import ReasoningTrace from "./ReasoningTrace";
 import { ChatIcon, CheckCircleIcon, ChevronDownIcon, ClockIcon, CoinIcon, TargetIcon } from "./Icons";
 
-// Matches run_eval.py's BUDGET_MAX_AVG_LATENCY_MS — the same budget the
+// Matches run_eval.py's BUDGET_MAX_AVG_LATENCY_MS - the same budget the
 // eval suite is held to, surfaced here so a slow stretch is visible at a
 // glance rather than only failing quietly in CI.
 const LATENCY_BUDGET_MS = 5000;
@@ -30,7 +30,7 @@ export default function Dashboard({ active, onViewOnGraph }) {
         <span className="chat-avatar agent">
           <ChatIcon width={16} height={16} />
         </span>
-        <p>No /ask calls logged yet — try the Ask AI tab first.</p>
+        <p>No /ask calls logged yet - try the Ask AI tab first.</p>
       </div>
     );
   }
@@ -85,7 +85,7 @@ export default function Dashboard({ active, onViewOnGraph }) {
   return (
     <div className="dashboard">
       <p className="dashboard-intro">
-        Every question sent to the agent, logged automatically — latency, cost, and how it was routed.
+        Every question sent to the agent, logged automatically - latency, cost, and how it was routed.
       </p>
 
       <div className="dashboard-stats">
@@ -102,7 +102,7 @@ export default function Dashboard({ active, onViewOnGraph }) {
 
       <div className="latency-chart-card">
         <div className="latency-chart-header">
-          <span>Latency — last {entries.length} calls, oldest to newest</span>
+          <span>Latency - last {entries.length} calls, oldest to newest</span>
           <span className="latency-chart-avg">avg {avgLatency} ms</span>
         </div>
         <div className="latency-chart">
@@ -118,7 +118,7 @@ export default function Dashboard({ active, onViewOnGraph }) {
                 key={i}
                 className={`latency-bar ${e.success ? "" : "failed"}`}
                 style={{ height: `${Math.max(4, (e.total_latency_ms / maxLatency) * 100)}%` }}
-                title={`${e.question} — ${e.total_latency_ms}ms`}
+                title={`${e.question} - ${e.total_latency_ms}ms`}
               />
             ))}
         </div>
@@ -174,14 +174,14 @@ export default function Dashboard({ active, onViewOnGraph }) {
                           {e.verified ? "✓ verified" : "⚡ generated"}
                         </span>
                       ) : (
-                        <span className="cell-muted">—</span>
+                        <span className="cell-muted">-</span>
                       )}
                     </td>
-                    <td className="num">{e.attempts ?? "—"}</td>
-                    <td className="num">{e.row_count ?? "—"}</td>
+                    <td className="num">{e.attempts ?? "-"}</td>
+                    <td className="num">{e.row_count ?? "-"}</td>
                     <td className="num">{e.total_latency_ms} ms</td>
                     <td className="num">
-                      {e.estimated_cost_usd != null ? `$${e.estimated_cost_usd.toFixed(5)}` : "—"}
+                      {e.estimated_cost_usd != null ? `$${e.estimated_cost_usd.toFixed(5)}` : "-"}
                     </td>
                   </tr>
                   {isOpen && (

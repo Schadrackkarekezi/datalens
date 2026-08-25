@@ -38,18 +38,18 @@ from app.models import (
 app = FastAPI(title="Traceview API")
 
 # FRONTEND_ORIGIN adds the deployed frontend's real origin on top of the
-# regex below — unset locally, so dev behavior is unchanged; a deployment
+# regex below - unset locally, so dev behavior is unchanged; a deployment
 # sets it to the actual prod URL (e.g. https://traceview.example.com).
 FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_ORIGIN] if FRONTEND_ORIGIN else [],
-    # Regex, not a fixed list — Vite falls back to the next free port
+    # Regex, not a fixed list - Vite falls back to the next free port
     # whenever something else is already on 5173 (as just happened), and a
     # hardcoded allowlist silently breaks every time that happens. Scoped
     # to localhost only, so this stays a dev convenience, not an open CORS
-    # policy — FRONTEND_ORIGIN above is what actually opens it up in prod.
+    # policy - FRONTEND_ORIGIN above is what actually opens it up in prod.
     allow_origin_regex=r"http://localhost:\d+",
     allow_methods=["*"],
     allow_headers=["*"],
@@ -137,8 +137,8 @@ def upload_enablement_content(request: UploadEnablementRequest):
     dependencies=[Depends(require_api_key), Depends(enforce_rate_limit)],
 )
 def ask(request: AskRequest):
-    # Generated before anything can fail, so every code path below — success
-    # or any of the except branches — logs under the same ID, and the
+    # Generated before anything can fail, so every code path below - success
+    # or any of the except branches - logs under the same ID, and the
     # client always gets one back even on a 4xx/5xx response.
     request_id = str(uuid.uuid4())
     start = time.perf_counter()
@@ -159,11 +159,11 @@ def ask(request: AskRequest):
         )
         raise HTTPException(status_code=422, detail=str(e), headers={"X-Request-Id": request_id})
     except openai.AuthenticationError:
-        detail = "OPENAI_API_KEY is missing or invalid — set it in backend/.env"
+        detail = "OPENAI_API_KEY is missing or invalid - set it in backend/.env"
         log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
         raise HTTPException(status_code=500, detail=detail, headers={"X-Request-Id": request_id})
     except openai.RateLimitError:
-        detail = "OpenAI API rate limit hit — try again shortly"
+        detail = "OpenAI API rate limit hit - try again shortly"
         log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
         raise HTTPException(status_code=429, detail=detail, headers={"X-Request-Id": request_id})
     except openai.APIStatusError as e:
@@ -171,7 +171,7 @@ def ask(request: AskRequest):
         log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
         raise HTTPException(status_code=502, detail=detail, headers={"X-Request-Id": request_id})
     except openai.OpenAIError as e:
-        detail = f"OPENAI_API_KEY is missing or invalid — set it in backend/.env ({e})"
+        detail = f"OPENAI_API_KEY is missing or invalid - set it in backend/.env ({e})"
         log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
         raise HTTPException(status_code=500, detail=detail, headers={"X-Request-Id": request_id})
 
@@ -190,13 +190,13 @@ def _sse(event: dict) -> str:
 )
 def ask_stream(request: AskRequest):
     """
-    Server-Sent Events version of /ask — same pipeline, same side effects
+    Server-Sent Events version of /ask - same pipeline, same side effects
     (add_turn, log_ask), but the "unstructured"/"hybrid" answer text
     arrives as "delta" events instead of appearing all at once. Kept as a
     separate endpoint rather than replacing /ask, since a streaming body
     can't change HTTP status after it starts (the 200 + headers are
     already sent), so errors here are reported as an "error" event in the
-    stream instead of an HTTPException status code — a real difference
+    stream instead of an HTTPException status code - a real difference
     from /ask's contract, not just a style choice.
     """
     request_id = str(uuid.uuid4())
@@ -232,11 +232,11 @@ def ask_stream(request: AskRequest):
             )
             yield _sse({"type": "error", "message": str(e), "request_id": request_id})
         except openai.AuthenticationError:
-            detail = "OPENAI_API_KEY is missing or invalid — set it in backend/.env"
+            detail = "OPENAI_API_KEY is missing or invalid - set it in backend/.env"
             log_failure(detail)
             yield _sse({"type": "error", "message": detail, "request_id": request_id})
         except openai.RateLimitError:
-            detail = "OpenAI API rate limit hit — try again shortly"
+            detail = "OpenAI API rate limit hit - try again shortly"
             log_failure(detail)
             yield _sse({"type": "error", "message": detail, "request_id": request_id})
         except openai.APIStatusError as e:
@@ -244,7 +244,7 @@ def ask_stream(request: AskRequest):
             log_failure(detail)
             yield _sse({"type": "error", "message": detail, "request_id": request_id})
         except openai.OpenAIError as e:
-            detail = f"OPENAI_API_KEY is missing or invalid — set it in backend/.env ({e})"
+            detail = f"OPENAI_API_KEY is missing or invalid - set it in backend/.env ({e})"
             log_failure(detail)
             yield _sse({"type": "error", "message": detail, "request_id": request_id})
 

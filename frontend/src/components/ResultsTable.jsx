@@ -58,7 +58,7 @@ export default function ResultsTable({ result, loading }) {
         </span>
         {truncated && (
           <span className="truncated-badge">
-            truncated at {row_count} rows — refine your query to see more
+            truncated at {row_count} rows - refine your query to see more
           </span>
         )}
       </div>

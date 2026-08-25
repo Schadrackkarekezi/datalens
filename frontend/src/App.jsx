@@ -67,7 +67,7 @@ export default function App() {
 
   const handleRun = useCallback(() => runSql(sql), [sql, runSql]);
 
-  // Clicking a table in the catalog previews it immediately — the whole
+  // Clicking a table in the catalog previews it immediately - the whole
   // point is "click a table, see its data," not "click a table, then
   // remember to also press Run."
   const handlePickTable = (name) => {
@@ -83,7 +83,7 @@ export default function App() {
     setMode("graph");
   };
 
-  // Home's entry points funnel through here — either a question (goes to
+  // Home's entry points funnel through here - either a question (goes to
   // the one Ask AI conversation) or a direct link to another page.
   const handleHomeAsk = (question, targetMode) => {
     if (question) {
@@ -114,7 +114,7 @@ export default function App() {
 
         <main>
           {/* All panels stay mounted so switching pages never loses state
-              (query history, the active conversation, dashboard scroll) —
+              (query history, the active conversation, dashboard scroll) -
               only visibility toggles. */}
           <div style={{ display: mode === "home" ? "block" : "none" }}>
             <Home onAsk={handleHomeAsk} />

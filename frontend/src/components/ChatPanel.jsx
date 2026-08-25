@@ -18,7 +18,7 @@ function newConversationId() {
 }
 
 // No login yet, so "history" here means per-browser-session, not per-user:
-// sessionStorage (not localStorage) on purpose — it survives a page
+// sessionStorage (not localStorage) on purpose - it survives a page
 // refresh but clears when the tab closes, which is the honest boundary
 // given the backend's own conversation memory is also just in-process and
 // gone on restart (documented in conversations.py). Persisting further
@@ -149,7 +149,7 @@ function Exchange({ entry, onViewOnGraph }) {
                 <div className="chat-sql-label">
                   <span>
                     {data.verified ? (
-                      <span className="verified-badge verified" title="Matched a pre-vetted question — skipped generation entirely">
+                      <span className="verified-badge verified" title="Matched a pre-vetted question - skipped generation entirely">
                         ✓ Verified
                       </span>
                     ) : (
@@ -230,7 +230,7 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
   }, [conversationId, history]);
 
   // Follows new content (including streamed deltas, since those also
-  // update `history`) the way ChatGPT/Claude do — but only while already
+  // update `history`) the way ChatGPT/Claude do - but only while already
   // near the bottom, so scrolling up mid-stream to reread something isn't
   // fought by an auto-scroll yanking the view back down. The actual
   // scrolling element is <main> (owned by App.jsx, shared across every
@@ -256,7 +256,7 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
   useEffect(() => {
     const scrollEl = scrollElRef.current;
     // offsetParent is null when a display:none ancestor hides this panel
-    // (switched to another page) — a background stream still updating
+    // (switched to another page) - a background stream still updating
     // history shouldn't scroll whatever page is actually on screen.
     const isVisible = chatPanelRef.current?.offsetParent != null;
     if (scrollEl && isVisible && stickToBottomRef.current) {
@@ -267,7 +267,7 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
   // `conversationIdOverride`/`startFresh` exist for sendAsNewConversation
   // below: setConversationId/setHistory queue a state update, but this
   // function's own `conversationId`/`history` closure variables won't see
-  // it until the next render — calling send() synchronously right after
+  // it until the next render - calling send() synchronously right after
   // would otherwise still target the conversation being left.
   const send = async (q, { conversationIdOverride, startFresh = false } = {}) => {
     if (!q.trim() || loading) return;
@@ -275,7 +275,7 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
     const isFirstMessage = startFresh || history.length === 0;
     setQuestion("");
     setLoading(true);
-    // Submitting is an explicit "show me this" action — follow the new
+    // Submitting is an explicit "show me this" action - follow the new
     // exchange even if a scroll-up earlier had paused auto-follow.
     stickToBottomRef.current = true;
 
@@ -290,10 +290,10 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
       });
     }
 
-    // "chat" turns have no "start" at all — straight from the loading
+    // "chat" turns have no "start" at all - straight from the loading
     // placeholder to onComplete. "sql" streams into `explanation` (a
     // short note under the table); "unstructured"/"hybrid" stream into
-    // `message` (the primary answer) — same delta mechanics, different
+    // `message` (the primary answer) - same delta mechanics, different
     // target field depending on which one this turn actually fills in.
     let entryIndex = null;
     let streamField = "message";
@@ -346,10 +346,10 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
   };
 
   // A question submitted from the Home view arrives here rather than being
-  // sent directly from Home — reuses send()'s logic, not a second entry
+  // sent directly from Home - reuses send()'s logic, not a second entry
   // point that duplicates it. Always starts its own new conversation
   // (like ChatGPT/Claude's "new chat"), never silently continues whatever
-  // conversation happened to be active when Home was last visited — that
+  // conversation happened to be active when Home was last visited - that
   // was a real bug: asking a fresh question from Home was appending to an
   // unrelated, already-open thread instead of starting its own.
   useEffect(() => {
@@ -369,7 +369,7 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
     }
   };
 
-  // Starting a new conversation doesn't clear the one being left — it
+  // Starting a new conversation doesn't clear the one being left - it
   // might still have tabs to switch back to, and a follow-up there should
   // still resolve correctly. clearConversation() is reserved for an
   // actual delete, where "discard the backend's memory of this thread" is
@@ -438,7 +438,7 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
         {history.length === 0 && (
           <div className="chat-empty">
             <AgentAvatar />
-            <p>Ask a question about your data — or try one of these:</p>
+            <p>Ask a question about your data - or try one of these:</p>
             <div className="suggestion-chips">
               {SUGGESTIONS.map((s) => (
                 <button key={s} className="suggestion-chip" onClick={() => send(s)}>

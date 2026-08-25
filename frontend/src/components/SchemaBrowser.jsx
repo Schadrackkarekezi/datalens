@@ -34,7 +34,7 @@ export default function SchemaBrowser({ onPickTable, activeTable, onSchemaLoaded
     .filter((g) => g.tables.length > 0);
   const ungrouped = filtered.filter((t) => t.kind !== "dimension" && t.kind !== "fact");
 
-  // Collapsed to name + column count — a full column listing per table
+  // Collapsed to name + column count - a full column listing per table
   // reads fine as a handful of tables, but at a dozen+ (once unstructured
   // content tables are in the mix) it turns the sidebar into an
   // unreadable wall of text. Full detail lives in the Data Catalog page

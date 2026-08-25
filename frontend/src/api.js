@@ -1,6 +1,6 @@
 const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
-// Only sent if VITE_API_KEY is set at build time — auth is opt-in server-side
+// Only sent if VITE_API_KEY is set at build time - auth is opt-in server-side
 // too (backend/auth.py), so local dev with no key configured needs no header.
 const API_KEY = import.meta.env.VITE_API_KEY;
 
@@ -49,7 +49,7 @@ export async function askQuestionStream(question, conversationId, { onStart, onD
     try {
       detail = (await res.json()).detail;
     } catch {
-      /* body wasn't JSON — fall through to the generic message below */
+      /* body wasn't JSON - fall through to the generic message below */
     }
     throw new Error(detail || `Ask failed (${res.status})`);
   }

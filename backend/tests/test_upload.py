@@ -1,6 +1,6 @@
 """
 The upload isolation guarantee is a real correctness/security property,
-same category as the SQL safety tests — a leak here means one account's
+same category as the SQL safety tests - a leak here means one account's
 uploaded note surfacing in another account's (or a global) answer. These
 run against the real database and the real pgvector index, uploading and
 then immediately attacking the isolation boundary, the same discipline

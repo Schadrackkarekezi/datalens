@@ -5,7 +5,7 @@ Revises:
 Create Date: 2026-08-24 21:20:31.463042
 
 Executes data/schema.sql as-is rather than reproducing every CREATE
-TABLE by hand — that file stays the one canonical definition of the
+TABLE by hand - that file stays the one canonical definition of the
 baseline schema, and every statement in it is already idempotent
 (CREATE TABLE IF NOT EXISTS, etc.), so this is safe to run against a
 brand new database (docker-compose's own first-boot bootstrap) or one
@@ -13,7 +13,7 @@ that already has schema.sql applied (it's a no-op there, and just
 records the migration as the starting point for anything after it).
 
 From here forward, schema changes belong in a new migration
-(`alembic revision -m "..."`), not a hand-edit to schema.sql — that file
+(`alembic revision -m "..."`), not a hand-edit to schema.sql - that file
 stops being "the schema" the moment there's a real migration history on
 top of it, and only stays around as the fast-path bootstrap for a fresh
 database.

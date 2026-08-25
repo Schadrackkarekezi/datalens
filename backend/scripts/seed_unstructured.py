@@ -1,12 +1,12 @@
 """
 Seeds the unstructured side of Traceview: account_notes (account-scoped CS/
 sales free text) and enablement_content (global battlecards/plays/FAQs),
-both chunked into document_chunks — the table Phase 08's pgvector
+both chunked into document_chunks - the table Phase 08's pgvector
 retrieval actually searches over. Embeddings are left NULL here; that's
 Phase 08's job, once the retrieval module exists to generate them with.
 
 account_notes are generated from the real seeded structured data, not
-hand-written — a note's numbers (consumption ratio, committed amount,
+hand-written - a note's numbers (consumption ratio, committed amount,
 CSM name) come straight from the same accounts/capacity_contracts/
 consumption_usage tables the SQL agent queries, so a hybrid answer that
 pulls both the trend (structured) and the narrative (unstructured) will
@@ -14,7 +14,7 @@ find them actually agreeing, the same discipline used for seed_db.py's
 correlated data. enablement_content is hand-authored, since it's meant to
 be general company knowledge, not tied to any one account's numbers.
 
-Deterministic (random.seed(43) — different from seed_db.py's 42, so this
+Deterministic (random.seed(43) - different from seed_db.py's 42, so this
 script's own randomized phrasing choices don't shift if seed_db.py's
 generation logic ever changes) and truncate-and-reinsert, like seed_db.py.
 """
@@ -33,7 +33,7 @@ TABLES_IN_TRUNCATE_ORDER = ["document_chunks", "account_notes", "enablement_cont
 
 
 # ---------------------------------------------------------------------
-# account_notes — generated from real structured data
+# account_notes - generated from real structured data
 # ---------------------------------------------------------------------
 
 def fetch_account_context(cur) -> list:
@@ -86,7 +86,7 @@ RISK_ACTIONS = [
     "scheduling an exec sponsor call before the next billing cycle",
     "looping in the AE to re-scope the use case with the new stakeholder",
     "proposing a workload health check to re-anchor on original success criteria",
-    "escalating internally — this one needs air cover before the renewal conversation",
+    "escalating internally - this one needs air cover before the renewal conversation",
 ]
 GROWTH_SIGNALS = [
     "usage has been climbing steadily for three straight months",
@@ -95,7 +95,7 @@ GROWTH_SIGNALS = [
     "the technical champion is actively advocating for the platform internally",
 ]
 STEADY_NOTES = [
-    "nothing unusual to flag — usage is tracking close to plan",
+    "nothing unusual to flag - usage is tracking close to plan",
     "the relationship is stable, no open asks on our side right now",
     "quiet quarter, which given the account's history is a good sign",
 ]
@@ -114,7 +114,7 @@ def note_for_account(ctx: dict, ratio: float) -> str:
     if status == "churned":
         cause = random.choice(RISK_CAUSES)
         return (
-            f"Post-mortem — {name} ({industry}). Contract on {workload} closed out churned, "
+            f"Post-mortem - {name} ({industry}). Contract on {workload} closed out churned, "
             f"final consumption was tracking at {pct} of the {committed} committed capacity before "
             f"lapsing. Root cause: {cause}. {csm} flagged this in the account plan two quarters "
             f"back but we weren't able to re-engage in time. Lesson for next renewal-risk account "
@@ -125,7 +125,7 @@ def note_for_account(ctx: dict, ratio: float) -> str:
         cause = random.choice(RISK_CAUSES)
         action = random.choice(RISK_ACTIONS)
         return (
-            f"QBR note — {name} ({industry}). Consumption on {workload} is at {pct} of the "
+            f"QBR note - {name} ({industry}). Consumption on {workload} is at {pct} of the "
             f"{committed} committed capacity, trending down over the last three months. Cause "
             f"looks like {cause}. {csm} is treating this as renewal-risk in the account plan. "
             f"Action: {action}. {ae} looped in on the exec relationship side."
@@ -134,7 +134,7 @@ def note_for_account(ctx: dict, ratio: float) -> str:
     if ratio >= 0.9:
         signal = random.choice(GROWTH_SIGNALS)
         return (
-            f"QBR note — {name} ({industry}). Strong quarter on {workload} — {pct} of the "
+            f"QBR note - {name} ({industry}). Strong quarter on {workload} - {pct} of the "
             f"{committed} committed capacity, and {signal}. {csm} sees this as a real workload-"
             f"expansion candidate rather than a renewal concern. Worth {ae} scoping an expansion "
             f"conversation for the next cycle rather than waiting for the renewal date."
@@ -142,7 +142,7 @@ def note_for_account(ctx: dict, ratio: float) -> str:
 
     steady = random.choice(STEADY_NOTES)
     return (
-        f"QBR note — {name} ({industry}). {workload} contract at {pct} of the {committed} "
+        f"QBR note - {name} ({industry}). {workload} contract at {pct} of the {committed} "
         f"committed capacity. {steady}. {csm} has no immediate escalations; next check-in "
         f"scheduled for the standard quarterly cadence."
     )
@@ -167,7 +167,7 @@ def seed_account_notes(cur) -> list:
 
 
 # ---------------------------------------------------------------------
-# enablement_content — hand-authored, not account-specific
+# enablement_content - hand-authored, not account-specific
 # ---------------------------------------------------------------------
 
 ENABLEMENT_DOCS = [
@@ -176,31 +176,31 @@ ENABLEMENT_DOCS = [
         "battlecard",
         "When the competitor is an on-prem or legacy cloud data warehouse, the winning angle is "
         "operational burden, not just performance. Legacy warehouses require manual capacity "
-        "planning — DBAs sizing clusters ahead of demand, then living with either over-provisioned "
+        "planning - DBAs sizing clusters ahead of demand, then living with either over-provisioned "
         "idle spend or under-provisioned query queuing. Our consumption model inverts that: compute "
         "scales to the workload automatically, and the customer only pays for what actually ran. "
         "Lead with a concrete question in discovery: \"who currently decides when to resize your "
         "warehouse, and how long does that take?\" The answer is almost always a multi-week change-"
-        "management process, which is the wedge. Don't lead with raw benchmark numbers — legacy "
+        "management process, which is the wedge. Don't lead with raw benchmark numbers - legacy "
         "warehouse customers have usually been burned by vendor benchmarks before and will discount "
         "them. Anchor instead on total cost of ownership including the DBA hours spent on capacity "
         "management, not license price alone. If the competitor is mid-migration off a legacy "
-        "system already, that's a warmer signal than a greenfield deal — they've already accepted "
+        "system already, that's a warmer signal than a greenfield deal - they've already accepted "
         "the pain of moving, the only question left is where they land.",
     ),
     (
         "Workload Expansion Play: Data Warehousing to Data Sharing",
         "sales_play",
         "Trigger: the account mentions needing to send data to a partner, customer, or another "
-        "internal business unit on a recurring basis — especially if they describe a manual export/"
+        "internal business unit on a recurring basis - especially if they describe a manual export/"
         "import process (SFTP, flat files, scheduled email reports). This is a pure pain-relief "
         "play, not a new-capability pitch: the account already has the need, they're just solving "
-        "it with brittle manual tooling. Quantify the manual process in discovery — how often does "
+        "it with brittle manual tooling. Quantify the manual process in discovery - how often does "
         "it run, who maintains it, has it ever broken silently. Data Sharing removes the copy "
         "entirely, which is the actual value prop, not \"sharing is easier\" in the abstract. This "
         "play converts fastest with accounts in regulated industries (financial services, "
         "healthcare) where the current manual export process is also an audit liability, not just "
-        "an operational one — mention that angle explicitly if the account is in one of those "
+        "an operational one - mention that angle explicitly if the account is in one of those "
         "verticals, it's usually underweighted by the account team going in.",
     ),
     (
@@ -208,26 +208,26 @@ ENABLEMENT_DOCS = [
         "sales_play",
         "Signal pattern: committed capacity utilization dropping for three or more consecutive "
         "months, especially alongside any account_team change or a champion departure, is the "
-        "single most predictive indicator of non-renewal in our historical data — more predictive "
+        "single most predictive indicator of non-renewal in our historical data - more predictive "
         "than the raw consumption level itself. A account sitting at 60% utilization but stable is "
         "lower risk than one that dropped from 95% to 70% over a quarter, even though the second "
         "number looks higher. Recommended motion: the CSM should initiate an exec alignment call "
         "within 30 days of detecting the pattern, not wait until the standard QBR cadence catches "
         "it, and definitely not wait until the renewal window. Do not lead with a workload-expansion "
-        "pitch while an account is showing this pattern — an expansion ask lands worse during a "
+        "pitch while an account is showing this pattern - an expansion ask lands worse during a "
         "visible disengagement signal than during stable or growing usage, and can read as tone-deaf "
         "if the account is dealing with an internal reorg or budget pressure.",
     ),
     (
         "Sales Play: Identifying Under-Consumption Risk Early",
         "sales_play",
-        "Don't wait for capacity_contracts.status to flip to at_risk before acting — that status is "
+        "Don't wait for capacity_contracts.status to flip to at_risk before acting - that status is "
         "a lagging label, not an early warning. The leading signal is the ratio of trailing-3-month "
         "average consumption to the straight-line monthly target (committed_amount divided by 12). "
         "An account dropping below roughly 70% of that target for two consecutive months should "
         "trigger a CSM check-in regardless of what the account status field currently says. This is "
         "specifically why CSMs should be looking at the consumption trend directly rather than only "
-        "scanning for accounts already marked at-risk in a dashboard — by the time the label "
+        "scanning for accounts already marked at-risk in a dashboard - by the time the label "
         "changes, the disengagement is usually already a quarter old, and the intervention options "
         "have narrowed considerably.",
     ),
@@ -236,13 +236,13 @@ ENABLEMENT_DOCS = [
         "sales_play",
         "When an account already has committed spend with a major cloud provider that they're "
         "trying to draw down (a common enterprise procurement pattern), transacting through that "
-        "cloud's marketplace instead of a direct contract can meaningfully accelerate procurement — "
+        "cloud's marketplace instead of a direct contract can meaningfully accelerate procurement - "
         "it often skips a separate vendor security review entirely, since the marketplace "
         "transaction inherits the cloud provider's existing approval. Ask early in the deal cycle "
         "whether the account has committed cloud spend they're trying to burn down; if yes, loop in "
         "the partner team immediately rather than late in negotiation, since marketplace listings "
         "require lead time to set up correctly for a specific deal. Don't default to marketplace for "
-        "every deal, though — for accounts with heavily negotiated custom pricing, a direct contract "
+        "every deal, though - for accounts with heavily negotiated custom pricing, a direct contract "
         "usually gives more flexibility than the marketplace's more rigid pricing structure allows.",
     ),
     (
@@ -250,45 +250,45 @@ ENABLEMENT_DOCS = [
         "objection_handling",
         "This objection usually means the buyer has been burned by a variable-cost platform before, "
         "not that they've done the math on our specific pricing and found it wanting. Don't respond "
-        "with a pricing calculator immediately — first ask what happened at the previous platform "
+        "with a pricing calculator immediately - first ask what happened at the previous platform "
         "that made costs unpredictable. Almost always the answer is a lack of visibility into what "
         "was driving spend, not the variable pricing model itself. Our answer should lead with "
         "visibility: consumption is tracked per workload, per account, in near-real time, so a cost "
         "spike is traceable to a specific pipeline or query pattern within the same day, not "
         "discovered on next month's invoice. Offer a committed-capacity contract as the actual "
-        "answer to the predictability concern — it converts variable draw-down into a fixed, "
+        "answer to the predictability concern - it converts variable draw-down into a fixed, "
         "budgeted number the finance team can plan against, while still only paying for consumption "
-        "under the hood. Don't oversell committed capacity as \"fixed pricing\" — it isn't; be "
+        "under the hood. Don't oversell committed capacity as \"fixed pricing\" - it isn't; be "
         "precise that it's a budget ceiling with usage-based draw-down underneath.",
     ),
     (
         "Objection Handling: We Already Have a Data Warehouse",
         "objection_handling",
-        "This is rarely a hard no — it's usually a signal that the conversation started too broad. "
+        "This is rarely a hard no - it's usually a signal that the conversation started too broad. "
         "Narrow immediately to a specific workload or pain point the existing platform handles "
         "poorly, rather than trying to win a head-to-head \"replace everything\" conversation the "
         "buyer isn't ready to have. Good narrowing questions: what's the one report or pipeline that "
-        "consistently causes friction (slow, flaky, expensive to run)? Is there a need — sharing "
-        "data with an external partner without a manual export — that the current platform can't "
+        "consistently causes friction (slow, flaky, expensive to run)? Is there a need - sharing "
+        "data with an external partner without a manual export - that the current platform can't "
         "do at all, forcing a workaround? Land a single well-scoped workload first rather than "
         "pitching a full migration; migrations are won incrementally in this market, not in one "
         "sales cycle. Avoid "
-        "disparaging the incumbent platform directly — the buyer chose it and defending that choice "
+        "disparaging the incumbent platform directly - the buyer chose it and defending that choice "
         "is a natural reflex; focus entirely on the specific gap, not the platform's general quality.",
     ),
     (
         "Objection Handling: Concerned About Migration Risk and Downtime",
         "objection_handling",
         "Reframe immediately: this almost never needs to be a cutover migration. Most winning deals "
-        "start with a net-new workload running in parallel with the existing platform — no data "
+        "start with a net-new workload running in parallel with the existing platform - no data "
         "leaves the incumbent system, nothing is at risk, and the new workload proves itself on its "
         "own merits before any conversation about migrating existing workloads even comes up. This "
         "removes the downtime question entirely for the initial deal. If the account genuinely does "
         "need a full migration eventually (contract expiring, platform being sunset), that's a "
-        "separate, later conversation with its own technical validation plan — don't conflate it "
+        "separate, later conversation with its own technical validation plan - don't conflate it "
         "with the initial land. Bringing in the SE for a technical deep-dive on the parallel-running "
         "approach, rather than the AE describing it secondhand, meaningfully increases the buyer's "
-        "confidence here — this is a credibility objection as much as a technical one.",
+        "confidence here - this is a credibility objection as much as a technical one.",
     ),
     (
         "FAQ: What Counts as 'Active' Consumption?",
@@ -307,10 +307,10 @@ ENABLEMENT_DOCS = [
         "faq",
         "A capacity contract is a committed dollar amount an account agrees to over a term, drawn "
         "down via actual usage rather than paid as a flat subscription fee. If an account consumes "
-        "beyond its committed amount before the term ends, that's handled via a true-up — a new "
+        "beyond its committed amount before the term ends, that's handled via a true-up - a new "
         "contract row with contract_type 'true_up', reflecting additional committed capacity added "
         "mid-term rather than waiting for the renewal date. True-ups are generally a healthy signal, "
-        "not a billing problem to apologize for — they mean the account is consuming faster than "
+        "not a billing problem to apologize for - they mean the account is consuming faster than "
         "planned, which is the opposite of the under-consumption pattern that predicts churn. Don't "
         "confuse a true-up with an overage penalty; there isn't one, it's simply additional "
         "committed capacity purchased when the original amount runs out early.",
@@ -325,7 +325,7 @@ ENABLEMENT_DOCS = [
         "the technical validation; the AE owns keeping the business stakeholder engaged in parallel "
         "so the deal doesn't stall purely on technical merits after the POC succeeds. A POC that "
         "drags past four weeks without a clear blocker identified is usually a scoping problem, not "
-        "a technical one — go back to the account and re-narrow the success criteria rather than "
+        "a technical one - go back to the account and re-narrow the success criteria rather than "
         "extending the timeline indefinitely.",
     ),
 ]
@@ -345,7 +345,7 @@ def seed_enablement_content(cur) -> list:
 
 
 # ---------------------------------------------------------------------
-# Chunking pass — both sources feed the same document_chunks table
+# Chunking pass - both sources feed the same document_chunks table
 # ---------------------------------------------------------------------
 
 def chunk_and_insert(cur, source_type: str, source_id: int, account_id, text: str) -> int:

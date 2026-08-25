@@ -1,5 +1,5 @@
 """
-CLI wrapper for the bulk backfill case — the actual logic lives in
+CLI wrapper for the bulk backfill case - the actual logic lives in
 embedding.py so the live /upload endpoint can call the same function
 instead of duplicating it.
 

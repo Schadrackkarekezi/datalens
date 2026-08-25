@@ -1,12 +1,12 @@
 """
-Conversation history — what makes /ask support follow-up questions
+Conversation history - what makes /ask support follow-up questions
 ("now break that down by department") instead of every question starting
 from zero. Stored in Postgres (conversation_turns), not per-process
 memory: the earlier in-memory dict was fine for a single-instance demo,
 but meant a server restart silently forgot every conversation in
 progress. This version survives a restart and would be shared correctly
 across multiple backend instances too, since every instance reads the
-same table instead of its own private memory — the fix that made the
+same table instead of its own private memory - the fix that made the
 old in-memory limitation a documented tradeoff was moving the storage,
 not adding a cache in front of it.
 """
@@ -50,7 +50,7 @@ def add_turn(conversation_id: str, question: str, result: dict):
             "columns": result["columns"],
         }
     elif response_type == "hybrid":
-        # Keeps both halves — a follow-up like "now break that down by
+        # Keeps both halves - a follow-up like "now break that down by
         # workload" needs the SQL shape to resolve "that" correctly, but
         # collapsing to a chat-shaped turn (question + message only, the
         # non-sql branch below) would lose it and only remember the prose.

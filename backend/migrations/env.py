@@ -12,7 +12,7 @@ from app.database import DATABASE_URL
 config = context.config
 
 # Read from the same DATABASE_URL every other part of the app uses
-# (app/database.py — .env in dev, a real env var in any real deployment)
+# (app/database.py - .env in dev, a real env var in any real deployment)
 # instead of a second, separate connection string hardcoded in
 # alembic.ini. One source of truth for "which database," not two that
 # can drift out of sync. +psycopg tells SQLAlchemy to use the psycopg3
@@ -26,7 +26,7 @@ config.set_main_option(
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# No ORM models in this codebase (everything is raw psycopg SQL) — every
+# No ORM models in this codebase (everything is raw psycopg SQL) - every
 # migration is hand-written with op.execute(), so there's nothing to
 # autogenerate a diff against.
 target_metadata = None

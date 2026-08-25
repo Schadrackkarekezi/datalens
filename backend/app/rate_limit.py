@@ -1,5 +1,5 @@
 """
-Simple in-memory sliding-window rate limiter for /ask specifically — the
+Simple in-memory sliding-window rate limiter for /ask specifically - the
 one endpoint that costs real money per call. /query and /schema are free
 local reads and aren't limited.
 

@@ -24,8 +24,8 @@ export default function Sidebar({ mode, onModeChange, onPickTable, activeTable, 
 
       <nav className="sidebar-nav">
         {NAV_ITEMS.map(({ id, label, Icon }) => {
-          // "ask" has no nav entry of its own — it's only ever reached from
-          // Home's ask box — so while a conversation is active, Home is
+          // "ask" has no nav entry of its own - it's only ever reached from
+          // Home's ask box - so while a conversation is active, Home is
           // still the nav item that reads as "where you are."
           const isActive = mode === id || (id === "home" && mode === "ask");
           return (

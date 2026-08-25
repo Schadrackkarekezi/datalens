@@ -1,10 +1,10 @@
 """
 Tests for the safety boundary in query_engine.run_select().
 
-These are the most important tests in the project — this is the function
+These are the most important tests in the project - this is the function
 that decides whether AI-generated (or hand-typed) SQL is allowed to touch
 the database at all. The actual enforcement is Postgres's own privilege
-system (the datalens_readonly role has SELECT and nothing else — see
+system (the datalens_readonly role has SELECT and nothing else - see
 schema.sql), so these tests are exercising a real database role, not a
 mock of one.
 """

@@ -1,6 +1,6 @@
 """
 conversations.py moved from an in-memory dict to a real conversation_turns
-table specifically so history survives a server restart — these run
+table specifically so history survives a server restart - these run
 against the real table, not a mock, since a mock would happily pass even
 if the actual SQL were wrong.
 """
@@ -43,7 +43,7 @@ def test_add_turn_and_get_history_round_trip():
 
 
 def test_history_survives_a_fresh_connection():
-    # The whole point of moving off in-memory storage — a brand new
+    # The whole point of moving off in-memory storage - a brand new
     # get_history() call (a stand-in for "a different process entirely")
     # must still see turns written earlier, not just within one Python
     # process's lifetime.

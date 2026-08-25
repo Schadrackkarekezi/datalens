@@ -43,7 +43,7 @@ jobs:
         run: alembic upgrade head
 
       # test_retrieval.py and test_verified_queries.py query real seeded,
-      # embedded rows (document_chunks, verified_queries) — against the
+      # embedded rows (document_chunks, verified_queries) - against the
       # bare schema from the step above those tables are empty and every
       # one of those tests fails. Same seed chain local dev runs by hand.
       - name: Seed structured + unstructured data and embed it
@@ -80,7 +80,7 @@ jobs:
         run: npm run build
 
   eval:
-    name: Agent eval (manual trigger only — costs real API money)
+    name: Agent eval (manual trigger only - costs real API money)
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     services:

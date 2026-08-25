@@ -1,4 +1,4 @@
-// Small inline-SVG icon set — no icon library pulled in for a handful of
+// Small inline-SVG icon set - no icon library pulled in for a handful of
 // simple line icons; keeps the bundle light and every icon consistent
 // (1.6px stroke, 18px box) since they're all hand-drawn to the same spec.
 

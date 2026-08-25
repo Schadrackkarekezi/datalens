@@ -1,5 +1,5 @@
 """
-Embeds every document_chunks row still missing an embedding — shared by
+Embeds every document_chunks row still missing an embedding - shared by
 embed_content.py (the bulk backfill script) and the live /upload endpoint,
 which calls this right after inserting new chunks so they're retrievable
 immediately instead of waiting for a separate batch job to notice them.

@@ -11,7 +11,7 @@ import {
   GraphIcon,
 } from "./Icons";
 
-// The proactive half of the app — surfaced the moment Home loads, not
+// The proactive half of the app - surfaced the moment Home loads, not
 // only when someone thinks to ask. Ranks by how far under target an
 // account is trending, and deliberately includes accounts still labeled
 // "active": capacity_contracts.status is a lagging, manually-set label
@@ -19,7 +19,7 @@ import {
 // for accounts already marked at_risk misses exactly the accounts this
 // is supposed to catch early. account_notes.content is fetched inline
 // (a plain correlated subquery, not a semantic search) since we already
-// know the account — there's nothing to search for, just the latest
+// know the account - there's nothing to search for, just the latest
 // note to show as the "why."
 const ATTENTION_QUERY = `
 SELECT a.account_id, a.name, a.industry, w.name AS workload, cc.status,
@@ -52,10 +52,10 @@ function greeting() {
   return "Good evening";
 }
 
-// A snapshot query per tile — each one is a plain read-only SELECT run
+// A snapshot query per tile - each one is a plain read-only SELECT run
 // through the same safety-guarded /query endpoint the SQL editor uses, not
 // a separate stats API. If a tile is wrong, it's wrong for the same reason
-// a query editor result would be wrong — one code path, not two.
+// a query editor result would be wrong - one code path, not two.
 const SNAPSHOT_QUERIES = [
   { label: "Accounts", sql: "SELECT COUNT(*) FROM accounts", icon: DatabaseIcon, tone: "neutral" },
   {
@@ -150,7 +150,7 @@ export default function Home({ onAsk }) {
       <div className="home-hero">
         <h1>{greeting()}. I'm Traceview, your GTM AI assistant.</h1>
         <p>
-          Ask about any account, deal, or contract — I'll pull the real numbers and the story
+          Ask about any account, deal, or contract - I'll pull the real numbers and the story
           behind them, so you know not just what's happening, but why.
         </p>
 

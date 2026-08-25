@@ -1,7 +1,7 @@
 """
 Append-only log of every /ask call, for the observability dashboard.
 
-A JSONL file (one JSON object per line) instead of a SQLite table — a log
+A JSONL file (one JSON object per line) instead of a SQLite table - a log
 table would show up in /schema next to the real business tables, which
 would be a confusing thing for a demo to explain.
 
@@ -9,7 +9,7 @@ Each entry carries the same request_id the API handed back to the
 client (main.py generates it once per call, before anything can fail).
 The full step-by-step trace already lives inside this one line, but
 without a shared ID there was no way to connect "the answer a user
-reports as wrong" back to "the specific log entry that explains why" —
+reports as wrong" back to "the specific log entry that explains why" -
 or to Uvicorn's own access logs, a separate stream this doesn't touch.
 The ID is what makes those two things findable as the same request,
 not the logging call itself.

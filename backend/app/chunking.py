@@ -1,5 +1,5 @@
 """
-Shared word-based chunker — used both by seed_unstructured.py (bulk
+Shared word-based chunker - used both by seed_unstructured.py (bulk
 authoring) and the live /upload endpoint (one document at a time), so
 there's exactly one chunking implementation to keep consistent rather
 than two copies that could quietly drift apart.

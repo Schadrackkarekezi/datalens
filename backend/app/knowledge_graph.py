@@ -3,9 +3,9 @@ A lightweight knowledge graph over the schema, used to give the agent
 explicit join-path hints instead of making it infer join paths from a flat
 column list alone.
 
-This is deliberately NOT a separate graph database — the graph is built
+This is deliberately NOT a separate graph database - the graph is built
 in-memory (networkx) from two things that are already sources of truth:
-the schema's actual foreign keys (database.fetch_foreign_keys — so the
+the schema's actual foreign keys (database.fetch_foreign_keys - so the
 graph can't drift out of sync with the real schema) and ontology.json,
 which adds the semantic layer FKs don't carry on their own: what an entity
 *means* (aliases for matching natural-language questions to tables) and
@@ -17,7 +17,7 @@ joins, because a flat schema listing doesn't tell the model *how* two
 tables connect when there's more than one hop between them. Given a
 question, find_relevant_entities() matches mentioned concepts to tables,
 and find_join_paths() computes the actual path between them via graph
-traversal — e.g. "employees -> activities -> deals -> products" — and
+traversal - e.g. "employees -> activities -> deals -> products" - and
 that path gets handed to the model as a hint, not discovered by guessing.
 """
 
@@ -40,20 +40,20 @@ def _load_ontology():
 def build_graph():
     """
     Only tables explicitly declared in ontology.json ever become graph
-    nodes — deliberately, not via networkx's implicit node creation.
+    nodes - deliberately, not via networkx's implicit node creation.
 
     networkx.add_edge() silently creates a node for any table it hasn't
     seen yet, with no attributes. Confirmed as a real bug, not a
     hypothetical: account_notes and document_chunks both have a foreign
     key to accounts, so unconditionally adding every FK edge from the live
     database made them show up as "dimension" tables (the default when a
-    node has no kind) — meaning the SQL-generation prompt saw their real
+    node has no kind) - meaning the SQL-generation prompt saw their real
     columns and the agent wrote a raw SQL query dumping note content
     straight into a result cell, completely bypassing retrieve_unstructured
     and synthesis. Restricting edges to declared entities on both ends is
     what keeps infrastructure tables (unstructured content, embeddings,
-    verified queries, glossary) out of the graph — and therefore out of
-    the SQL schema — unless they're deliberately added here as a real
+    verified queries, glossary) out of the graph - and therefore out of
+    the SQL schema - unless they're deliberately added here as a real
     business entity, not swept in by accident.
     """
     global _graph
@@ -93,7 +93,7 @@ def get_graph():
 
 def tables_by_kind() -> dict:
     """
-    {"fact": [...], "dimension": [...]} — the classic dimensional-modeling
+    {"fact": [...], "dimension": [...]} - the classic dimensional-modeling
     split (facts = transactional events, dimensions = reference data).
     Presenting the schema this way, instead of as one flat table list,
     gives the model the same structural cue a well-designed semantic

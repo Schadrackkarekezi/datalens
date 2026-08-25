@@ -1,9 +1,9 @@
 -- Traceview schema: consumption-based GTM data model, dimension/fact split.
 --
 -- Run automatically by docker-compose on first `db` container creation
--- (mounted into /docker-entrypoint-initdb.d) — the fast path for a brand
--- new database. Re-running against an existing database is safe — every
--- statement is idempotent — but this file is no longer the ongoing
+-- (mounted into /docker-entrypoint-initdb.d) - the fast path for a brand
+-- new database. Re-running against an existing database is safe - every
+-- statement is idempotent - but this file is no longer the ongoing
 -- source of truth for the schema now that migrations/ exists: it's also
 -- executed as-is by the initial Alembic migration
 -- (migrations/versions/..._initial_schema_baseline.py), and any schema
@@ -11,11 +11,11 @@
 -- (`alembic revision -m "..."`), not a hand-edit here.
 --
 -- Two roles exist on purpose:
---   datalens            — owns the schema, used for migrations and seeding.
---   datalens_readonly   — SELECT-only, granted nothing else. This is the
+--   datalens            - owns the schema, used for migrations and seeding.
+--   datalens_readonly   - SELECT-only, granted nothing else. This is the
 --                          actual safety boundary for AI- or user-generated
 --                          SQL (see backend/query_engine.py), enforced by
---                          Postgres itself rather than application code —
+--                          Postgres itself rather than application code -
 --                          the direct equivalent of SQLite's set_authorizer
 --                          hook, but as a real multi-user privilege instead
 --                          of a compile-time callback.
@@ -131,11 +131,11 @@ CREATE INDEX IF NOT EXISTS idx_activities_deal ON activities(deal_id);
 CREATE INDEX IF NOT EXISTS idx_touches_account ON marketing_touches(account_id);
 
 -- ---------------------------------------------------------------------
--- Unstructured content — the two source types feeding document_chunks.
+-- Unstructured content - the two source types feeding document_chunks.
 -- account_notes are account-scoped (CS/sales free text); enablement_content
 -- is global (battlecards, sales plays) and carries no account_id at all,
 -- which is what makes it structurally impossible to leak into another
--- account's context — there's no account to leak from in the first place.
+-- account's context - there's no account to leak from in the first place.
 -- ---------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS account_notes (
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS enablement_content (
 
 -- Both source types get chunked into this one table, which is what
 -- Phase 08's retrieval actually searches over. account_id is NULL for
--- enablement_content chunks and NOT NULL for account_notes chunks — that
+-- enablement_content chunks and NOT NULL for account_notes chunks - that
 -- column is the isolation boundary Phase 11's upload feature depends on.
 CREATE TABLE IF NOT EXISTS document_chunks (
     chunk_id    INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -171,7 +171,7 @@ CREATE INDEX IF NOT EXISTS idx_notes_account ON account_notes(account_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_account ON document_chunks(account_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_source ON document_chunks(source_type, source_id);
 
--- Verified-query repository, ported off in-memory FAISS onto pgvector —
+-- Verified-query repository, ported off in-memory FAISS onto pgvector -
 -- the embedding lives here precomputed, not rebuilt from a JSON file on
 -- every process start. verified_queries.json stays the human-edited
 -- source (each entry's provenance recorded in verified_via); this table
@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS verified_queries (
     embedding    vector(384)
 );
 
--- Business-glossary retrieval, same pgvector pattern — this is what grounds
+-- Business-glossary retrieval, same pgvector pattern - this is what grounds
 -- SQL generation in the project's own precise definitions ("active deal",
 -- "win rate") instead of the model guessing a generic one. Deliberately a
 -- separate table from document_chunks: short term/definition pairs used to
@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS glossary_terms (
     embedding  vector(384)
 );
 
--- Conversation history, keyed by the client-generated conversation_id —
+-- Conversation history, keyed by the client-generated conversation_id -
 -- what makes /ask support follow-ups ("now break that down by industry")
 -- instead of every question starting from zero. Previously an in-memory
 -- Python dict (conversations.py), which meant a server restart silently
@@ -206,7 +206,7 @@ CREATE TABLE IF NOT EXISTS glossary_terms (
 -- backend instances too, since every instance reads the same table
 -- instead of its own private memory. `turn` is the same small JSON shape
 -- conversations.py has always built (type/question/sql/message/etc,
--- varying per response type) — stored as JSONB rather than split into
+-- varying per response type) - stored as JSONB rather than split into
 -- rigid columns, since its shape genuinely varies by response type and
 -- there's nothing here that needs to be queried by its internal fields.
 CREATE TABLE IF NOT EXISTS conversation_turns (

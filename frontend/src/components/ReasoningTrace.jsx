@@ -13,7 +13,7 @@ const STEP_META = {
 
 function describeStep(step) {
   if (step.step === "verified_match") {
-    return `matched "${step.matched_question}" (${(step.similarity * 100).toFixed(1)}% similarity) — skipped generation entirely`;
+    return `matched "${step.matched_question}" (${(step.similarity * 100).toFixed(1)}% similarity) - skipped generation entirely`;
   }
 
   if (step.step === "retrieve") {
@@ -36,7 +36,7 @@ function describeStep(step) {
 
   if (step.step === "respond") {
     if (step.status === "chat") return "replied conversationally, no query needed";
-    if (step.status === "error") return `attempt ${step.attempt} failed: ${step.error} — retrying`;
+    if (step.status === "error") return `attempt ${step.attempt} failed: ${step.error} - retrying`;
     return `attempt ${step.attempt} · ${step.row_count} row${step.row_count === 1 ? "" : "s"} returned`;
   }
 
@@ -45,16 +45,16 @@ function describeStep(step) {
     const ids = step.resolved_account_ids || [];
     const scope = ids.length === 0 ? "company-wide" : ids.length === 1 ? `account #${ids[0]}` : `accounts #${ids.join(", #")}`;
     if (sources.length === 0) return `no matching context found (${scope})`;
-    return `${sources.length} source${sources.length > 1 ? "s" : ""} retrieved (${scope}) — top score ${(sources[0].score * 100).toFixed(0)}%`;
+    return `${sources.length} source${sources.length > 1 ? "s" : ""} retrieved (${scope}) - top score ${(sources[0].score * 100).toFixed(0)}%`;
   }
 
   if (step.step === "synthesize") {
-    if (step.status === "error") return "writing the summary failed — falling back to raw results";
+    if (step.status === "error") return "writing the summary failed - falling back to raw results";
     return "wrote the final answer from the retrieved sources";
   }
 
   if (step.step === "explain_sql") {
-    if (step.status === "error") return "explanation failed — the result above is unaffected";
+    if (step.status === "error") return "explanation failed - the result above is unaffected";
     return "wrote a short note on what the result shows";
   }
 
@@ -82,7 +82,7 @@ function summarize(trace) {
   return { totalMs: Math.round(totalMs), hasWarning, verified, count: trace.length };
 }
 
-// The mode a plain step count doesn't tell you — "3 steps" looks the same
+// The mode a plain step count doesn't tell you - "3 steps" looks the same
 // whether the agent decided this was a SQL lookup or a hybrid answer, and
 // that routing decision is exactly the thing worth seeing at a glance
 // rather than only after expanding.

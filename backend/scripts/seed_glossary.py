@@ -1,5 +1,5 @@
 """
-Loads glossary.json into the glossary_terms table and embeds each term —
+Loads glossary.json into the glossary_terms table and embeds each term -
 same pattern as seed_verified_queries.py. glossary.json stays the human-
 edited source; this is what agent.py's retrieval actually reads from.
 

@@ -16,7 +16,7 @@ def test_exact_match_hits():
 
 
 def test_paraphrase_hits():
-    # Measured at 0.9648 against "How many accounts do we have?" — a real
+    # Measured at 0.9648 against "How many accounts do we have?" - a real
     # paraphrase, comfortably above MATCH_THRESHOLD (0.92).
     result = verified_queries.find_verified_match("How many accounts do we currently have?")
     assert result is not None
@@ -29,7 +29,7 @@ def test_unrelated_question_misses():
 
 def test_adjacent_but_different_question_does_not_false_positive():
     # Same structure as the verified "retail industry" deal-count entry,
-    # but scoped to a different industry — measured at 0.7732, well below
+    # but scoped to a different industry - measured at 0.7732, well below
     # the 0.92 threshold. Must NOT match just because it's topically close.
     result = verified_queries.find_verified_match(
         "How many deals were logged for accounts in the healthcare industry?"

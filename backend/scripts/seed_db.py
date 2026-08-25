@@ -1,5 +1,5 @@
 """
-Seeds the Traceview Postgres database with synthetic, GTM-authentic data —
+Seeds the Traceview Postgres database with synthetic, GTM-authentic data -
 consumption-based, not seat-based: workload adoption, capacity contracts,
 credit-consumption trends, modeled after how any usage-based data
 platform business works generically, not any one real company.
@@ -11,9 +11,9 @@ the db container is first created. This script only owns data: it
 truncates every table and re-inserts, so it's safe to re-run any time
 without recreating the container.
 
-Consumption trends are deliberately correlated to contract status here —
+Consumption trends are deliberately correlated to contract status here -
 a "declining" trend account is far more likely to end up "at_risk" than a
-"growing" one — rather than assigning both independently at random. Real
+"growing" one - rather than assigning both independently at random. Real
 questions like "which accounts are under-consuming ahead of renewal" only
 mean something if that correlation actually exists in the data, not just
 in the prompt asking about it. This is a first pass at that correlation;

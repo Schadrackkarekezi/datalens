@@ -1,5 +1,5 @@
 """
-Handles POST /upload — adds a new account note or piece of enablement
+Handles POST /upload - adds a new account note or piece of enablement
 content, chunks it with the same chunker seed_unstructured.py uses, and
 embeds the new chunks immediately (embedding.py) so they're retrievable
 right away instead of waiting for a batch job to notice them.
@@ -8,7 +8,7 @@ account_id is the actual isolation boundary retrieval.py enforces, and
 this is where that boundary either holds or doesn't at ingestion time:
 an account note always carries a real account_id, resolved from a
 validated foreign key (_require_account below raises if the account
-doesn't exist — never silently proceeds with a bad or missing one), and
+doesn't exist - never silently proceeds with a bad or missing one), and
 enablement content never carries an account_id at all. There's no
 in-between state where a chunk could end up ambiguously scoped.
 """
@@ -30,7 +30,7 @@ def _require_account(conn, account_id: int) -> None:
     with conn.cursor() as cur:
         cur.execute("SELECT 1 FROM accounts WHERE account_id = %s", (account_id,))
         if cur.fetchone() is None:
-            raise UploadError(f"No account with account_id={account_id} — check the ID and try again.")
+            raise UploadError(f"No account with account_id={account_id} - check the ID and try again.")
 
 
 def _insert_chunks(cur, source_type: str, source_id: int, account_id, content: str) -> int:

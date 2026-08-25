@@ -6,13 +6,13 @@ const HEIGHT = 580;
 const NODE_W = 140;
 const NODE_H = 34;
 
-// Force-directed layout, hand-rolled — the graph is 9 nodes / 13 edges, far
+// Force-directed layout, hand-rolled - the graph is 9 nodes / 13 edges, far
 // too small to justify a physics library. Three forces: nodes repel each
 // other (so they spread out instead of clustering), edges pull their two
 // endpoints toward an ideal length (so connected tables end up near each
 // other), and everything is pulled gently toward center (so the graph
 // doesn't drift off-canvas). `alpha` decays each tick like d3-force's
-// convention — the simulation runs hot on load or on drag, then cools to a
+// convention - the simulation runs hot on load or on drag, then cools to a
 // stable rest instead of jittering forever.
 const REPULSION = 18000;
 const SPRING_LENGTH = 190;
@@ -20,7 +20,7 @@ const SPRING_STRENGTH = 0.035;
 const CENTER_STRENGTH = 0.008;
 const DAMPING = 0.82;
 const ALPHA_DECAY = 0.985;
-// Point-repulsion alone isn't enough — two node *centers* can be "far
+// Point-repulsion alone isn't enough - two node *centers* can be "far
 // enough" by the physics while their 140px-wide boxes still overlap. This
 // is the minimum center-to-center distance actually enforced, sized to the
 // node's bounding half-diagonal plus a visible gap.
@@ -43,7 +43,7 @@ function seedPositions(nodes) {
   return positions;
 }
 
-// One physics tick — pure, so it can be run synchronously in a tight loop
+// One physics tick - pure, so it can be run synchronously in a tight loop
 // to pre-solve the layout before the first paint, and reused unchanged in
 // the animated per-frame loop. Mutates pos/vel in place.
 function simulationStep(nodes, edges, pos, vel, alpha, draggedId) {
@@ -107,7 +107,7 @@ function simulationStep(nodes, edges, pos, vel, alpha, draggedId) {
   resolveCollisions(nodes, pos, draggedId);
 }
 
-// Direct collision resolution, not just a force — a spring can settle at
+// Direct collision resolution, not just a force - a spring can settle at
 // equilibrium with residual overlap if it's not strong enough. This
 // guarantees no two boxes end up visually stacked, by directly separating
 // any pair still closer than COLLISION_DIST. Returns whether anything moved.
@@ -168,7 +168,7 @@ export default function GraphViewer({ highlight }) {
   useEffect(() => {
     getGraph()
       .then((data) => {
-        // Pre-solve synchronously before the first paint — otherwise the
+        // Pre-solve synchronously before the first paint - otherwise the
         // graph opens on the raw seed circle and visibly untangles itself
         // over the next second or two. Running the same physics here, just
         // without waiting for animation frames, means it opens already
@@ -211,7 +211,7 @@ export default function GraphViewer({ highlight }) {
         alphaRef.current *= ALPHA_DECAY;
         forceRender((t) => t + 1);
       } else if (resolveCollisions(nodes, pos, draggedId)) {
-        // Simulation's at rest, but still guarantee no permanent overlap —
+        // Simulation's at rest, but still guarantee no permanent overlap -
         // e.g. if a drag shoved two nodes back together after settling.
         forceRender((t) => t + 1);
       }
@@ -380,7 +380,7 @@ export default function GraphViewer({ highlight }) {
                   onMouseEnter={() => setHoveredEdgeKey(key)}
                   onMouseLeave={() => setHoveredEdgeKey(null)}
                 >
-                  {/* Fat invisible line under the visible one — a 1.5px
+                  {/* Fat invisible line under the visible one - a 1.5px
                       stroke is hard to hover precisely, and labels are now
                       hover-only, so accurate hit-testing matters. */}
                   <line
@@ -439,7 +439,7 @@ export default function GraphViewer({ highlight }) {
           {/* Top layer, rendered last so a label is never painted over by
               a node passing behind it. Every edge gets one, styled subtle
               by default (small, muted) so 13 of them read as fine detail
-              rather than noise — hovering or selecting a node brightens
+              rather than noise - hovering or selecting a node brightens
               just the relevant ones, rather than needing to hunt with the
               mouse to see any label at all. */}
           <g>

@@ -2,7 +2,7 @@
   box-sizing: border-box;
 }
 
-/* Theme tokens — light is the base palette (bare :root), dark is an
+/* Theme tokens - light is the base palette (bare :root), dark is an
    override applied two ways: automatically when the OS prefers dark
    (guarded so an explicit light choice always wins), and explicitly via
    [data-theme="dark"] so the in-app toggle works regardless of the OS
@@ -406,7 +406,7 @@ input:focus-visible {
 }
 
 /* Collapsed to a single scannable row: a color dot for kind, the name,
-   and a column-count badge — full column detail lives in the Data
+   and a column-count badge - full column detail lives in the Data
    Catalog page, which has room for it. */
 .schema-row {
   width: 100%;
@@ -1043,7 +1043,7 @@ tbody tr:hover {
   padding: 14px 16px;
 }
 
-/* Reasoning trace — collapsed to a one-line summary by default, so the
+/* Reasoning trace - collapsed to a one-line summary by default, so the
    answer itself is the first thing you see, not five steps of process
    detail above it. Expands on click for anyone who wants the detail. */
 

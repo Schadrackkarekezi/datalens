@@ -18,7 +18,7 @@ export default function QueryEditor({ sql, setSql, onRun, loading }) {
   return (
     <div className="query-editor">
       <p className="query-editor-intro">
-        Write raw SQL directly against the schema — read-only, capped at 500 rows, 5s timeout.
+        Write raw SQL directly against the schema - read-only, capped at 500 rows, 5s timeout.
       </p>
 
       <div className="code-frame">

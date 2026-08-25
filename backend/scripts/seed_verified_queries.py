@@ -1,11 +1,11 @@
 """
 Loads verified_queries.json into the verified_queries table and embeds
-each question — verified_queries.json stays the human-edited source of
+each question - verified_queries.json stays the human-edited source of
 truth (each entry's provenance recorded in verified_via, normally derived
 from a passing eval run), this script is just what pushes it into the
 place find_verified_match() actually reads from.
 
-Truncate-and-reinsert, like seed_db.py and seed_unstructured.py — safe to
+Truncate-and-reinsert, like seed_db.py and seed_unstructured.py - safe to
 re-run any time verified_queries.json changes.
 
 Usage: python -m scripts.seed_verified_queries   (run from backend/)

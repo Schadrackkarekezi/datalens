@@ -1,11 +1,11 @@
 """
-Verified query repository — a small set of question -> SQL pairs that have
+Verified query repository - a small set of question -> SQL pairs that have
 already passed both the deterministic checks and the LLM judge in the eval
 suite (see verified_queries.json's "verified_via" field, and eval_set.json).
 "Verified" means "passed the eval suite," not "someone eyeballed it once."
 
 On /ask, if the incoming question closely matches one of these, the agent
-skips LLM generation entirely and runs the pre-verified SQL directly —
+skips LLM generation entirely and runs the pre-verified SQL directly -
 still through the exact same query_engine.run_select() safety guard as
 every other query, just skipping the (cost- and latency-incurring)
 generation step. This is a real optimization, not just a trust badge: a
@@ -14,7 +14,7 @@ and a couple of seconds.
 
 Backed by pgvector (see the verified_queries table and
 seed_verified_queries.py), not an in-memory FAISS index rebuilt from JSON
-on every process start — the embeddings live precomputed in Postgres,
+on every process start - the embeddings live precomputed in Postgres,
 alongside the structured data, matched here the same way retrieval.py
 matches document_chunks.
 
@@ -23,8 +23,8 @@ because a false-positive match means silently serving the WRONG cached
 answer instead of just missing a retrieval. Empirically (see git history
 for the calibration script): true paraphrases of the same question score
 0.92-1.0 cosine similarity; a *related but meaningfully different*
-question — "what is our win rate" vs "what is our win rate BY
-DEPARTMENT" — still scores 0.80, since embedding models cluster on
+question - "what is our win rate" vs "what is our win rate BY
+DEPARTMENT" - still scores 0.80, since embedding models cluster on
 topic, not exact scope. MATCH_THRESHOLD is set well above that gap.
 """
 

@@ -1,7 +1,7 @@
 """
 Rough cost estimation for OpenAI API calls, for the observability dashboard.
 
-Rates are approximate and will drift as OpenAI changes pricing — treat this
+Rates are approximate and will drift as OpenAI changes pricing - treat this
 as "good enough to spot a cost spike," not a billing-accurate ledger. Check
 current rates at openai.com/api/pricing before trusting this for real
 budget decisions.

@@ -1,5 +1,5 @@
 """
-Admin-role Postgres connection — used for schema/FK introspection and by
+Admin-role Postgres connection - used for schema/FK introspection and by
 seed_db.py. This is NOT the safety boundary for user- or agent-generated
 SQL; that's query_engine.py, which connects as the separate, privilege-
 restricted datalens_readonly role instead.
@@ -54,7 +54,7 @@ def fetch_schema(conn) -> list:
 
 def fetch_foreign_keys(conn) -> list:
     """
-    Real FK constraints from Postgres's own catalog — knowledge_graph.py
+    Real FK constraints from Postgres's own catalog - knowledge_graph.py
     builds its edges from this, so the graph can't drift from the actual
     schema.
     """
@@ -88,15 +88,15 @@ def fetch_foreign_keys(conn) -> list:
 def fetch_check_constraint_values(conn) -> dict:
     """
     {"table.column": ["value1", "value2", ...]} for every single-column
-    CHECK (... IN (...)) constraint in the schema — read from Postgres's
+    CHECK (... IN (...)) constraint in the schema - read from Postgres's
     own pg_get_constraintdef, not hand-maintained, so it can't drift from
     schema.sql.
 
     Without this, the agent has no way to know which literal strings are
-    actually valid for a column like activity_type or stage — it can only
+    actually valid for a column like activity_type or stage - it can only
     guess a plausible-sounding one (confirmed: it once wrote
     activity_type = 'POC', which matches zero rows because the real value
-    is 'poc_kickoff' — a silent wrong answer, not an error, since the query
+    is 'poc_kickoff' - a silent wrong answer, not an error, since the query
     is syntactically fine and just returns nothing).
     """
     with conn.cursor() as cur:

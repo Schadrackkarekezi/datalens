@@ -1,5 +1,5 @@
 """
-Isolation tests for unstructured retrieval — the account_id boundary in
+Isolation tests for unstructured retrieval - the account_id boundary in
 retrieval.py is a real correctness/security property, not a nice-to-have:
 a leak here means one account's private notes surfacing in another
 account's answer. These run against the real seeded data and the real
