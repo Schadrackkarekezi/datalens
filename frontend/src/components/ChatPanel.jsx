@@ -188,6 +188,11 @@ function Exchange({ entry, onViewOnGraph }) {
 
 export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePending }) {
   const [question, setQuestion] = useState("");
+  // Separate from `question` on purpose - the input box clears immediately
+  // on submit (so it's ready for the next message), but the "thinking..."
+  // bubble still needs the text that was actually just asked, not whatever
+  // `question` holds by the time it renders (which is already "").
+  const [pendingText, setPendingText] = useState("");
   const [loading, setLoading] = useState(false);
   const [conversations, setConversations] = useState(loadConversationList);
   const [conversationId, setConversationId] = useState(() => {
@@ -252,6 +257,7 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
     const activeConversationId = conversationIdOverride ?? conversationId;
     const isFirstMessage = startFresh || history.length === 0;
     setQuestion("");
+    setPendingText(q);
     setLoading(true);
     // Submitting is an explicit "show me this" action - follow the new
     // exchange even if a scroll-up earlier had paused auto-follow.
@@ -432,7 +438,7 @@ export default function ChatPanel({ onViewOnGraph, pendingQuestion, onConsumePen
         {loading && (
           <div className="chat-exchange">
             <div className="chat-question-row">
-              <div className="chat-question-bubble">{question || "…"}</div>
+              <div className="chat-question-bubble">{pendingText}</div>
             </div>
             <div className="chat-answer-row">
               <AgentAvatar />
