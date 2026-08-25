@@ -15,16 +15,6 @@ Each question gets routed to one of four modes:
 
 Every step is timed and shown in a reasoning trace under each answer. Home also surfaces a proactive panel on load — accounts trending under target before they're formally flagged at-risk — instead of waiting to be asked. There's also a raw SQL editor with the same safety guarantees, a knowledge graph viewer, and an observability dashboard with full cost/latency/trace detail per call.
 
-## Real bugs found and fixed
-
-- **Read-only enforced by a Postgres role**, not app code — verified with a live attack that left data untouched. 35 tests cover this plus RAG/upload isolation, auth, and rate limiting.
-- **Knowledge-graph leak** — `networkx` auto-created nodes for internal tables, letting the agent write raw SQL that bypassed retrieval entirely. Fixed by only adding tables declared in `ontology.json`.
-- **Isolation by construction** — account-scoped chunks always carry a real `account_id`; retrieval filters in SQL, not after the fact.
-- **LLM-judge false negative** — the judge lacked the glossary context the generator had, and flagged a correct answer as wrong. Fixed by giving it the same grounding.
-- **Cached SQL, live explanations** — the SQL from a verified match is safe to reuse; a cached explanation isn't, since fuzzy matching means it might not fit what was actually asked.
-- **Agent hallucinated its own architecture** — asked how its RAG works, it once guessed wrong. Fixed with a true self-description in the system prompt.
-- **Fuzzy name matching** — generated SQL now uses `ILIKE` instead of `=`, since an exact-match miss silently returned `NULL` instead of erroring.
-
 ## Architecture
 
 ```mermaid
