@@ -147,8 +147,8 @@ export default function Home({ onAsk }) {
       <div className="home-hero">
         <h1>{greeting()}. I'm Traceview, your GTM AI assistant.</h1>
         <p>
-          Ask about any account, deal, or contract - I'll pull the real numbers and the story
-          behind them, so you know not just what's happening, but why.
+          Ask about any account, deal, or usage trend, and I'll pull the real numbers and the
+          notes behind them to give you a data-backed answer.
         </p>
 
         <div className="home-ask-box">
