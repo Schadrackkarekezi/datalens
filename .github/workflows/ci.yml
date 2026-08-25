@@ -129,28 +129,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python -m scripts.run_eval
 
-  deploy:
-    name: Deploy to Railway
-    needs: [test, frontend-build]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      # Backend service name in Railway must be exactly "backend" (frontend
-      # below the same, "frontend") - the CLI's --service flag has to match
-      # what the service is actually named in the Railway project.
-      - name: Deploy backend
-        working-directory: backend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service backend --detach
-
-      - name: Deploy frontend
-        working-directory: frontend
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service frontend --detach
+# Deploy to Railway is handled by Railway's own GitHub integration (each
+# service's "Wait for CI" setting), not a job here - that already gates
+# deploys on this workflow passing, so a second deploy mechanism here would
+# just double-deploy on every push instead of adding anything.
