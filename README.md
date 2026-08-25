@@ -2,7 +2,7 @@
 
 A GTM data assistant that answers plain-English questions with real SQL, retrieved account context, or both fused into one answer - not just a chatbot wrapper around a database. Read-only enforced at the database privilege level, evaluated by an independent LLM judge, and fully synthetic data (a fictional SaaS business, not modeled on or affiliated with any real company).
 
-![CI](https://github.com/Schadrackkarekezi/datalens/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Schadrackkarekezi/traceview/actions/workflows/ci.yml/badge.svg)
 
 ## What it does
 
