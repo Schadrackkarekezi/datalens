@@ -111,7 +111,6 @@ docker compose up --build
 ## Limitations
 
 - It can explain one account at a time, not compare several side by side yet — e.g. it can tell you why one account is declining, but not "compare these 3 accounts for me."
-- If something breaks, there's no single trail connecting every step of one specific question through the logs — you'd have to dig manually to piece it together.
 - The database gets fully wiped and rebuilt every time the demo data is reset. Fine for a demo — a real product with real customer data would need a way to update the database without deleting everything in it first.
 
 ## Project history

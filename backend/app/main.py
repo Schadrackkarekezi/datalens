@@ -1,5 +1,6 @@
 import json
 import time
+import uuid
 
 import openai
 from fastapi import Depends, FastAPI, HTTPException
@@ -129,6 +130,10 @@ def upload_enablement_content(request: UploadEnablementRequest):
     dependencies=[Depends(require_api_key), Depends(enforce_rate_limit)],
 )
 def ask(request: AskRequest):
+    # Generated before anything can fail, so every code path below — success
+    # or any of the except branches — logs under the same ID, and the
+    # client always gets one back even on a 4xx/5xx response.
+    request_id = str(uuid.uuid4())
     start = time.perf_counter()
     conversation_id = resolve_conversation_id(request.conversation_id)
     history = get_history(conversation_id)
@@ -141,30 +146,31 @@ def ask(request: AskRequest):
             request.question,
             (time.perf_counter() - start) * 1000,
             success=False,
+            request_id=request_id,
             error=str(e),
             estimated_cost_usd=cost,
         )
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e), headers={"X-Request-Id": request_id})
     except openai.AuthenticationError:
         detail = "OPENAI_API_KEY is missing or invalid — set it in backend/.env"
-        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
-        raise HTTPException(status_code=500, detail=detail)
+        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
+        raise HTTPException(status_code=500, detail=detail, headers={"X-Request-Id": request_id})
     except openai.RateLimitError:
         detail = "OpenAI API rate limit hit — try again shortly"
-        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
-        raise HTTPException(status_code=429, detail=detail)
+        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
+        raise HTTPException(status_code=429, detail=detail, headers={"X-Request-Id": request_id})
     except openai.APIStatusError as e:
         detail = f"OpenAI API error: {e.message}"
-        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
-        raise HTTPException(status_code=502, detail=detail)
+        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
+        raise HTTPException(status_code=502, detail=detail, headers={"X-Request-Id": request_id})
     except openai.OpenAIError as e:
         detail = f"OPENAI_API_KEY is missing or invalid — set it in backend/.env ({e})"
-        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
-        raise HTTPException(status_code=500, detail=detail)
+        log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
+        raise HTTPException(status_code=500, detail=detail, headers={"X-Request-Id": request_id})
 
     add_turn(conversation_id, question=request.question, result=result)
-    log_ask(request.question, (time.perf_counter() - start) * 1000, success=True, result=result)
-    return AskResponse(**result, conversation_id=conversation_id)
+    log_ask(request.question, (time.perf_counter() - start) * 1000, success=True, request_id=request_id, result=result)
+    return AskResponse(**result, conversation_id=conversation_id, request_id=request_id)
 
 
 def _sse(event: dict) -> str:
@@ -186,21 +192,25 @@ def ask_stream(request: AskRequest):
     stream instead of an HTTPException status code — a real difference
     from /ask's contract, not just a style choice.
     """
+    request_id = str(uuid.uuid4())
     start = time.perf_counter()
     conversation_id = resolve_conversation_id(request.conversation_id)
     history = get_history(conversation_id)
 
     def event_stream():
         def log_failure(detail):
-            log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, error=detail)
+            log_ask(request.question, (time.perf_counter() - start) * 1000, success=False, request_id=request_id, error=detail)
 
         try:
             for event in run_ask_stream(request.question, history=history):
                 if event["type"] == "complete":
                     result = event["data"]
                     add_turn(conversation_id, question=request.question, result=result)
-                    log_ask(request.question, (time.perf_counter() - start) * 1000, success=True, result=result)
-                    yield _sse({"type": "complete", "data": {**result, "conversation_id": conversation_id}})
+                    log_ask(request.question, (time.perf_counter() - start) * 1000, success=True, request_id=request_id, result=result)
+                    yield _sse({
+                        "type": "complete",
+                        "data": {**result, "conversation_id": conversation_id, "request_id": request_id},
+                    })
                 else:
                     yield _sse(event)
         except AgentError as e:
@@ -209,26 +219,27 @@ def ask_stream(request: AskRequest):
                 request.question,
                 (time.perf_counter() - start) * 1000,
                 success=False,
+                request_id=request_id,
                 error=str(e),
                 estimated_cost_usd=cost,
             )
-            yield _sse({"type": "error", "message": str(e)})
+            yield _sse({"type": "error", "message": str(e), "request_id": request_id})
         except openai.AuthenticationError:
             detail = "OPENAI_API_KEY is missing or invalid — set it in backend/.env"
             log_failure(detail)
-            yield _sse({"type": "error", "message": detail})
+            yield _sse({"type": "error", "message": detail, "request_id": request_id})
         except openai.RateLimitError:
             detail = "OpenAI API rate limit hit — try again shortly"
             log_failure(detail)
-            yield _sse({"type": "error", "message": detail})
+            yield _sse({"type": "error", "message": detail, "request_id": request_id})
         except openai.APIStatusError as e:
             detail = f"OpenAI API error: {e.message}"
             log_failure(detail)
-            yield _sse({"type": "error", "message": detail})
+            yield _sse({"type": "error", "message": detail, "request_id": request_id})
         except openai.OpenAIError as e:
             detail = f"OPENAI_API_KEY is missing or invalid — set it in backend/.env ({e})"
             log_failure(detail)
-            yield _sse({"type": "error", "message": detail})
+            yield _sse({"type": "error", "message": detail, "request_id": request_id})
 
     return StreamingResponse(
         event_stream(),

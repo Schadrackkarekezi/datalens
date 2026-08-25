@@ -94,6 +94,7 @@ class AskResponse(BaseModel):
     completion_tokens: int
     estimated_cost_usd: float
     conversation_id: str
+    request_id: str
 
 
 class UploadNoteRequest(BaseModel):
@@ -115,6 +116,7 @@ class UploadResponse(BaseModel):
 
 
 class LogEntry(BaseModel):
+    request_id: Optional[str] = None  # absent on log lines written before this field existed
     timestamp: str
     question: str
     success: bool
