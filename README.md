@@ -15,21 +15,15 @@ Each question gets routed to one of four modes:
 
 Every step is timed and shown in a reasoning trace under each answer. Home also surfaces a proactive panel on load — accounts trending under target before they're formally flagged at-risk — instead of waiting to be asked. There's also a raw SQL editor with the same safety guarantees, a knowledge graph viewer, and an observability dashboard with full cost/latency/trace detail per call.
 
-## The parts worth reading the code for
+## Real bugs found and fixed
 
-**Read-only is enforced by Postgres, not app code.** A dedicated `datalens_readonly` role (`GRANT SELECT` only) replaced an earlier `.startswith("select")` check that missed both legit `WITH ... SELECT` CTEs and disguised writes like `WITH x AS (SELECT 1) DELETE FROM deals`. Verified with a live attack — ran that exact query through the role, confirmed the data was untouched. 35 tests cover this plus RAG/upload isolation, auth, and rate limiting.
-
-**A knowledge graph bug once let raw SQL bypass retrieval entirely.** `networkx.add_edge()` silently creates a node for any table it hasn't seen — since `account_notes` and `document_chunks` both reference `accounts`, adding every live foreign key swept them into the schema the SQL-generator sees, and the agent wrote a query dumping note content straight into a result. Caught from a real test conversation, not a planned case. Fixed by only ever adding tables explicitly declared in `ontology.json`.
-
-**Hybrid answers fuse structured and unstructured data, isolated by construction.** Account-scoped chunks always carry a real `account_id`; global content never does; retrieval filters in SQL (`account_id = %s OR account_id IS NULL`) — there's no code path where one account's note could leak into another's answer.
-
-**The LLM judge had a false-negative bug.** It scored answers without the same glossary context the generating model had, and flagged a *correct* answer as wrong because it didn't know this project's own definition of "active deal." Fixed by giving the judge identical grounding — a judge with less context than the generator will always produce false negatives on context-dependent questions.
-
-**Verified (cached) queries skip generation, never the explanation.** Cache matching is similarity-based (≥0.92), not exact text, so a canned explanation could easily not match what was actually asked. The SQL is safe to reuse verbatim; the explanation is generated live from the real question and real rows, every time.
-
-**The agent used to hallucinate about itself.** Asked "how does RAG work here," it once explained a red/amber/green status indicator instead of retrieval-augmented generation — confidently wrong instead of asking which was meant. Fixed with a true, short self-description in the system prompt, plus a rule against picking one interpretation of an ambiguous term and running with it.
-
-**Generated SQL uses `ILIKE`, not `=`, on name filters.** An exact match against a shortened name (`'Sinclair Care'` vs. stored `'Sinclair Care Partners'`) doesn't error — it silently returns `NULL`, which reads as a real answer. Wildcard matching costs nothing when the exact name is given, since it's a superset of an exact match, not a looser one.
+- **Read-only enforced by a Postgres role**, not app code — verified with a live attack that left data untouched. 35 tests cover this plus RAG/upload isolation, auth, and rate limiting.
+- **Knowledge-graph leak** — `networkx` auto-created nodes for internal tables, letting the agent write raw SQL that bypassed retrieval entirely. Fixed by only adding tables declared in `ontology.json`.
+- **Isolation by construction** — account-scoped chunks always carry a real `account_id`; retrieval filters in SQL, not after the fact.
+- **LLM-judge false negative** — the judge lacked the glossary context the generator had, and flagged a correct answer as wrong. Fixed by giving it the same grounding.
+- **Cached SQL, live explanations** — the SQL from a verified match is safe to reuse; a cached explanation isn't, since fuzzy matching means it might not fit what was actually asked.
+- **Agent hallucinated its own architecture** — asked how its RAG works, it once guessed wrong. Fixed with a true self-description in the system prompt.
+- **Fuzzy name matching** — generated SQL now uses `ILIKE` instead of `=`, since an exact-match miss silently returned `NULL` instead of erroring.
 
 ## Architecture
 
